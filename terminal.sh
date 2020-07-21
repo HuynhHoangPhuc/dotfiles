@@ -44,6 +44,7 @@ function kitty {
     echo "Install dracula theme for kitty"
 
     git clone https://github.com/dracula/kitty.git
+    mkdir -p ~/.config/kitty && touch ~/.config/kitty/kitty.conf
     cp ./kitty/dracula.conf ./kitty/diff.conf ~/.config/kitty
     echo "include dracula.conf" >> ~/.config/kitty/kitty.conf
     echo "font_family Fira Code Retina" >> ~/.config/kitty/kitty.conf
