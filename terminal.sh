@@ -130,6 +130,16 @@ function install_nvm_and_nodejs() {
     echo "Install nodejs ... Done"
 }
 
+function install_yarn() {
+    echo "Install yarn"
+
+    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+    echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+    sudo apt update && sudo apt install yarn
+    
+    echo "Install yarn ... Done"
+}
+
 necessary_packages
 oh_my_zsh
 kitty
