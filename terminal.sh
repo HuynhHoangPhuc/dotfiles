@@ -140,6 +140,15 @@ function install_yarn() {
     echo "Install yarn ... Done"
 }
 
+function install_firacode() {
+    echo "Install firacode"
+
+    mkdir ~/.fonts
+    cp ./"Fira Code Retina Nerd Font Complete.otf" ~/.fonts/
+
+    echo "Install firacode ... Done"
+}
+
 necessary_packages
 oh_my_zsh
 kitty
