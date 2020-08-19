@@ -4,7 +4,7 @@
 function necessary_packages {
     echo "Install the necessary packages."
 
-    packages=(kitty zsh curl git fonts-firacode neovim tmux python3-pip python3-venv clangd ranger caca-utils highlight atool poppler-utils mediainfo ffmpegthumbnailer autojump libxext-dev apt-transport-https ca-certificates gnupg-agent software-properties-common silversearcher-ag)
+    packages=(kitty zsh curl git fonts-firacode neovim tmux python3-pip python3-venv clangd ranger caca-utils highlight atool poppler-utils mediainfo ffmpegthumbnailer autojump libxext-dev apt-transport-https ca-certificates gnupg-agent software-properties-common silversearcher-ag tree)
     for package in "${packages[@]}"
     do
         sudo apt install -y "${package}"
