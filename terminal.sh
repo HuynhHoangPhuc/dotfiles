@@ -147,3 +147,4 @@ tmux
 ranger
 docker_and_docker_compose
 install_nvm_and_nodejs
+install_yarn
