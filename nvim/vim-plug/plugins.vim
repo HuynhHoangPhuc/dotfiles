@@ -30,4 +30,5 @@ call plug#begin('~/.config/nvim/autoload/plugged')
     Plug 'neoclide/coc-json', {'do': 'yarn install --frozen-lockfile && yarn build'}
     Plug 'pantharshit00/coc-prisma', {'do': 'yarn install --frozen-lockfile && yarn build'}
     Plug 'neoclide/coc-tsserver', {'do': 'yarn install --frozen-lockfile && yarn build'}
+    Plug 'neoclide/coc-rls', {'do': 'yarn install --frozen-lockfile && yarn build'}
 call plug#end()
