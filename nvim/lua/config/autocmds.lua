@@ -1,35 +1,76 @@
---- Install lazy.nvim
-local lazypath = vim.fn.stdpath "data" .. "/lazy/lazy.nvim"
-if not vim.loop.fs_stat(lazypath) then
-  vim.fn.system {
-    "git",
-    "clone",
-    "--filter=blob:none",
-    "https://github.com/folke/lazy.nvim.git",
-    "--branch=stable",
-    lazypath,
-  }
-end
-vim.opt.rtp:prepend(lazypath)
-
--- Configure lazy.nvim
-require("lazy").setup("plugins", {
-  defaults = { lazy = true, version = nil },
-  install = { missing = true, colorscheme = { "tokyonight", "gruvbox" } },
-  checker = { enabled = true },
-  performance = {
-    rtp = {
-      disabled_plugins = {
-        "gzip",
-        "matchit",
-        "matchparen",
-        "netrwPlugin",
-        "tarPlugin",
-        "tohtml",
-        "tutor",
-        "zipPlugin",
-      },
-    },
-  },
+-- See `:help vim.highlight.on_yank()`
+local highlight_group = vim.api.nvim_create_augroup("YankHighlight", { clear = true })
+vim.api.nvim_create_autocmd("TextYankPost", {
+  callback = function()
+    vim.highlight.on_yank()
+  end,
+  group = highlight_group,
+  pattern = "*",
 })
-vim.keymap.set("n", "<leader>z", "<cmd>:Lazy<cr>", { desc = "Plugin Manager" })
+
+-- Check if we need to reload the file when it changed
+vim.api.nvim_create_autocmd("FocusGained", { command = "checktime" })
+
+-- Go to last loc when opening a buffer
+vim.api.nvim_create_autocmd("BufReadPre", {
+  pattern = "*",
+  callback = function()
+    vim.api.nvim_create_autocmd("FileType", {
+      pattern = "<buffer>",
+      once = true,
+      callback = function()
+        vim.cmd(
+          [[if &ft !~# 'commit\|rebase' && line("'\"") > 1 && line("'\"") <= line("$") | exe 'normal! g`"' | endif]]
+        )
+      end,
+    })
+  end,
+})
+
+-- windows to close
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = {
+    "OverseerForm",
+    "OverseerList",
+    "floggraph",
+    "fugitive",
+    "git",
+    "help",
+    "lspinfo",
+    "man",
+    "neotest-output",
+    "neotest-summary",
+    "qf",
+    "query",
+    "spectre_panel",
+    "startuptime",
+    "toggleterm",
+    "tsplayground",
+    "vim",
+  },
+  callback = function(event)
+    vim.bo[event.buf].buflisted = false
+    vim.keymap.set("n", "q", "<cmd>close<cr>", { buffer = event.buf, silent = true })
+  end,
+})
+
+
+-- show cursor line only in active window
+vim.api.nvim_create_autocmd({ "InsertLeave", "WinEnter" }, {
+  callback = function()
+    local ok, cl = pcall(vim.api.nvim_win_get_var, 0, "auto-cursorline")
+    if ok and cl then
+      vim.wo.cursorline = true
+      vim.api.nvim_win_del_var(0, "auto-cursorline")
+    end
+  end,
+})
+vim.api.nvim_create_autocmd({ "InsertEnter", "WinLeave" }, {
+  callback = function()
+    local cl = vim.wo.cursorline
+    if cl then
+      vim.api.nvim_win_set_var(0, "auto-cursorline", cl)
+      vim.wo.cursorline = false
+    end
+  end,
+})
