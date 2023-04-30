@@ -14,7 +14,7 @@ return {
   { "nacro90/numb.nvim", event = "BufReadPre", config = true },
   {
     "lukas-reineke/indent-blankline.nvim",
-    event = { "BufReadPost", "BufNewFile" },
+    event = "VeryLazy",
     opts = {
       char = "│",
       filetype_exclude = { "help", "Trouble", "lazy" },
