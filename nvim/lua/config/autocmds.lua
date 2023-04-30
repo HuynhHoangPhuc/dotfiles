@@ -1,40 +1,59 @@
+local function augroup(name)
+  return vim.api.nvim_create_augroup("mnv_" .. name, { clear = true })
+end
+
 -- See `:help vim.highlight.on_yank()`
-local highlight_group = vim.api.nvim_create_augroup("YankHighlight", { clear = true })
 vim.api.nvim_create_autocmd("TextYankPost", {
   callback = function()
     vim.highlight.on_yank()
   end,
-  group = highlight_group,
+  group = augroup "highlight_yank",
   pattern = "*",
 })
 
 -- Check if we need to reload the file when it changed
-vim.api.nvim_create_autocmd("FocusGained", { command = "checktime" })
+vim.api.nvim_create_autocmd({ "FocusGained", "TermClose", "TermLeave" }, {
+  group = augroup "checktime",
+  command = "checktime",
+})
 
--- Go to last loc when opening a buffer
-vim.api.nvim_create_autocmd("BufReadPre", {
-  pattern = "*",
+-- go to last loc when opening a buffer
+vim.api.nvim_create_autocmd("BufReadPost", {
+  group = augroup "last_loc",
   callback = function()
-    vim.api.nvim_create_autocmd("FileType", {
-      pattern = "<buffer>",
-      once = true,
-      callback = function()
-        vim.cmd(
-          [[if &ft !~# 'commit\|rebase' && line("'\"") > 1 && line("'\"") <= line("$") | exe 'normal! g`"' | endif]]
-        )
-      end,
-    })
+    local mark = vim.api.nvim_buf_get_mark(0, '"')
+    local lcount = vim.api.nvim_buf_line_count(0)
+    if mark[1] > 0 and mark[1] <= lcount then
+      pcall(vim.api.nvim_win_set_cursor, 0, mark)
+    end
   end,
 })
 
+-- Auto toggle hlsearch
+local ns = vim.api.nvim_create_namespace "toggle_hlsearch"
+local function toggle_hlsearch(char)
+  if vim.fn.mode() == "n" then
+    local keys = { "<CR>", "n", "N", "*", "#", "?", "/" }
+    local new_hlsearch = vim.tbl_contains(keys, vim.fn.keytrans(char))
+
+    if vim.opt.hlsearch:get() ~= new_hlsearch then
+      vim.opt.hlsearch = new_hlsearch
+    end
+  end
+end
+vim.on_key(toggle_hlsearch, ns)
+
 -- windows to close
 vim.api.nvim_create_autocmd("FileType", {
+  group = augroup "close_with_q",
   pattern = {
     "OverseerForm",
     "OverseerList",
+    "checkhealth",
     "floggraph",
     "fugitive",
     "git",
+    "gitcommit",
     "help",
     "lspinfo",
     "man",
@@ -54,23 +73,24 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
-
--- show cursor line only in active window
-vim.api.nvim_create_autocmd({ "InsertLeave", "WinEnter" }, {
+vim.api.nvim_set_hl(0, "TerminalCursorShape", { underline = true })
+vim.api.nvim_create_autocmd("TermEnter", {
   callback = function()
-    local ok, cl = pcall(vim.api.nvim_win_get_var, 0, "auto-cursorline")
-    if ok and cl then
-      vim.wo.cursorline = true
-      vim.api.nvim_win_del_var(0, "auto-cursorline")
-    end
+    vim.cmd [[setlocal winhighlight=TermCursor:TerminalCursorShape]]
   end,
 })
-vim.api.nvim_create_autocmd({ "InsertEnter", "WinLeave" }, {
+
+vim.api.nvim_create_autocmd("VimLeave", {
   callback = function()
-    local cl = vim.wo.cursorline
-    if cl then
-      vim.api.nvim_win_set_var(0, "auto-cursorline", cl)
-      vim.wo.cursorline = false
+    vim.cmd [[set guicursor=a:ver100]]
+  end,
+})
+
+-- show line diagnostics
+vim.api.nvim_create_autocmd("CursorHold", {
+  callback = function()
+    if require("plugins.lsp.utils").show_diagnostics() then
+      vim.schedule(vim.diagnostic.open_float)
     end
   end,
 })
