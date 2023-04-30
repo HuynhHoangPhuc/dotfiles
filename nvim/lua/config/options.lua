@@ -1,4 +1,5 @@
 local opt = vim.opt
+local indent = 4
 
 opt.autoindent = true
 opt.formatoptions = "jqlnt" -- tcqj
@@ -32,7 +33,7 @@ opt.scrollback = 100000
 opt.scrolloff = 8
 opt.sessionoptions = { "buffers", "curdir", "tabpages", "winsize" }
 opt.shiftround = true
-opt.shiftwidth = 2
+opt.shiftwidth = indent
 opt.showmode = false
 opt.sidescrolloff = 8
 opt.signcolumn = "yes"
@@ -40,7 +41,7 @@ opt.smartcase = true
 opt.smartindent = true
 opt.splitbelow = true
 opt.splitright = true
-opt.tabstop = 2
+opt.tabstop = indent
 opt.termguicolors = true
 opt.timeoutlen = 300
 opt.title = true
