@@ -34,7 +34,6 @@ return {
     Unit = "",
     Value = "",
     Variable = "",
-    Copilot = "",
   },
   git = {
     LineAdded = "",
