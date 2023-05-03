@@ -1,0 +1,60 @@
+format = """ $time $all$character"""
+
+[time]
+style = "bold green"
+format = "[$time]($style)"
+disabled = false
+
+[character]
+success_symbol = "[❯](bold green)"
+error_symbol = "[❯](bold red)"
+
+[username]
+show_always = true
+
+[directory]
+truncation_symbol = "…/"
+home_symbol = " ~"
+read_only = "  "
+
+[git_branch]
+symbol = " "
+truncation_symbol = "…/"
+
+[git_status]
+format = '[\($all_status$ahead_behind\)]($style) '
+style = "bold green"
+conflicted = "罹"
+up_to_date = " "
+untracked = " "
+ahead = "⇡${count}"
+diverged = "⇕⇡${ahead_count}⇣${behind_count}"
+behind = "⇣${count}"
+stashed = " "
+modified = " "
+staged = '[++\($count\)](green)'
+renamed = "襁 "
+deleted = " "
+
+[docker_context]
+format = "via [ $context](bold blue) "
+
+[python]
+symbol = " "
+
+[nodejs]
+format = "via [ $version](bold green) "
+disabled = true
+
+[kubernetes]
+format = 'on [ $context\($namespace\)](bold purple) '
+disabled = false
+[kubernetes.context_aliases]
+"clcreative-k8s-staging" = "cl-k8s-staging"
+"clcreative-k8s-production" = "cl-k8s-prod"
+
+[c]
+symbol = " "
+
+[lua]
+symbol = " "
