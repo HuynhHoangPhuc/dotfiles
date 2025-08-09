@@ -1,0 +1,17 @@
+theme = catppuccin-mocha.conf
+# theme = kanso-zen.conf
+window-padding-x = 0
+window-padding-y = 0
+font-feature = -calt, -liga, -dlig
+font-family = "MonaspiceNe Nerd Font"
+font-family-italic = "MonaspiceRn Nerd Font"
+font-family-bold-italic = "MonaspiceRn Nerd Font"
+font-style-italic = "Regular"
+adjust-cell-height = 15
+adjust-cursor-height = 15
+adjust-underline-position = 5
+font-size = 16
+cursor-style = block
+cursor-style-blink = false
+shell-integration-features = no-cursor
+macos-option-as-alt = true
