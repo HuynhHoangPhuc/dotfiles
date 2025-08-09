@@ -1,5 +1,6 @@
 [
   ./bat.nix
+  ./direnv.nix
   ./eza.nix
   ./fzf.nix
   ./gh.nix
