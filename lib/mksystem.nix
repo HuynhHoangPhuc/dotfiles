@@ -125,7 +125,6 @@ systemFunc {
         {
           nix-homebrew = {
             enable = true;
-            enableRosetta = if system == "aarch64-darwin" then true else false;
             user = username;
             autoMigrate = true;
             taps = {
