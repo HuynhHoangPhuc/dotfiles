@@ -20,8 +20,6 @@
     taps = builtins.attrNames config.nix-homebrew.taps;
     casks = [
       "brave-browser"
-      "font-jetbrains-mono-nerd-font"
-      "font-monaspace-nerd-font"
       "ghostty"
       "clion"
       "pycharm"

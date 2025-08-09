@@ -53,6 +53,17 @@ systemFunc {
     { nixpkgs.config.allowUnfree = true; }
 
     {
+      fonts.packages = with pkgs; [
+        nerd-fonts.fira-code
+        nerd-fonts.recursive-mono
+        nerd-fonts.monaspace
+        nerd-fonts.martian-mono
+        nerd-fonts.code-new-roman
+        nerd-fonts.jetbrains-mono
+      ];
+    }
+
+    {
       environment = {
         shells = with pkgs; [
           bash
@@ -64,7 +75,9 @@ systemFunc {
         ];
         pathsToLink = [ "/Applications" ];
       };
+    }
 
+    {
       nix = {
         extraOptions = ''
           experimental-features = nix-command flakes
