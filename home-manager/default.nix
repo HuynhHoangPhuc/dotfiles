@@ -1,0 +1,14 @@
+[
+  ./bat.nix
+  ./eza.nix
+  ./fzf.nix
+  ./gh.nix
+  ./ghostty.nix
+  # ./git.nix
+  ./home.nix
+  ./neovim.nix
+  ./packages.nix
+  ./starship.nix
+  ./tmux.nix
+  ./zsh.nix
+]
