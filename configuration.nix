@@ -34,18 +34,28 @@ utils.eachSystem supportedSystems (
     pkgs = import inputs.nixpkgs {
       inherit system;
     };
+    homeDirectory = if pkgs.stdenv.isDarwin then "/Users/${username}" else "/home/${username}";
 
-    darwinRebuild = inputs.nix-darwin.packages.${system}.darwin-rebuild;
-    dotfiles-rebuild = pkgs.writeScriptBin "dotfiles-rebuild" ''
-      sudo ${darwinRebuild}/bin/darwin-rebuild switch --flake .
-      echo "DONE"
+    darwinRebuild = inputs.nixpkgs.lib.getExe inputs.nix-darwin.packages.${system}.darwin-rebuild;
+    dotfiles-switch = pkgs.writeScriptBin "dot-switch" ''
+      echo "> Running system switch  ..."
+      if [[ "$#" -ge 1 ]]; then
+        sudo ${darwinRebuild} switch --flake ".#$1"
+      else
+        sudo ${darwinRebuild} switch --flake .
+      fi
+      echo "> System switch was successful ✅"
+      echo "> Refreshing zshrc..."
+      ${pkgs.lib.getExe pkgs.zsh} -c "source ${homeDirectory}/.zshrc"
+      echo "> zshrc was refreshed successfully ✅"
+      echo "> Config was successfully applied 🚀"
     '';
   in
   {
     devShells.default = pkgs.mkShellNoCC {
       name = "dotfiles";
-      packages = with pkgs; [
-        dotfiles-rebuild
+      packages = [
+        dotfiles-switch
       ];
     };
   }
