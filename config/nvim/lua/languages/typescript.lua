@@ -176,17 +176,17 @@ M.format = {
 		typescript = { "biome", "biome-organize-imports" },
 		typescriptreact = { "biome", "biome-organize-imports" },
 	},
-	formatters = {
-		biome = {
-			args = {
-				"format",
-				"--indent-style=space",
-				"--indent-width=4",
-				"--stdin-file-path",
-				"$FILENAME",
-			},
-		},
-	},
+	-- formatters = {
+	-- 	biome = {
+	-- 		args = {
+	-- 			"format",
+	-- 			"--indent-style=space",
+	-- 			"--indent-width=4",
+	-- 			"--stdin-file-path",
+	-- 			"$FILENAME",
+	-- 		},
+	-- 	},
+	-- },
 }
 
 M.lint = {
