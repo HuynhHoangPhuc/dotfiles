@@ -57,6 +57,7 @@
           javascript
           jq
           json
+          jsx
           lua
           make
           markdown
@@ -74,6 +75,8 @@
           templ
           terraform
           toml
+          typescript
+          tsx
           vhs
           vim
           vimdoc
