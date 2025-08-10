@@ -57,7 +57,6 @@
           javascript
           jq
           json
-          jsx
           lua
           make
           markdown
