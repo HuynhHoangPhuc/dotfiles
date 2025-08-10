@@ -1,4 +1,7 @@
-{ config, pkgs, ... }:
+{
+  pkgs,
+  ...
+}:
 
 {
   programs.neovim = {
@@ -96,5 +99,9 @@
   xdg.configFile."nvim" = {
     source = ../config/nvim;
     recursive = true;
+  };
+
+  xdg.configFile.".editorconfig" = {
+    source = ../config/.editorconfig;
   };
 }
