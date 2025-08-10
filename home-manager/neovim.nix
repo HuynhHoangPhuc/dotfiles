@@ -101,7 +101,5 @@
     recursive = true;
   };
 
-  xdg.configFile.".editorconfig" = {
-    source = ../config/.editorconfig;
-  };
+  home.file.".editorconfig".source = ../config/.editorconfig;
 }
