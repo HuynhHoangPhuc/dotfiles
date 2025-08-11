@@ -7,7 +7,6 @@
   caches,
   darwinSystems ? [
     "aarch64-darwin"
-    "x86_64-darwin"
   ],
   linuxSystems ? [
     "aarch64-linux"
