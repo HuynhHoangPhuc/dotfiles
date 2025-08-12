@@ -15,6 +15,17 @@ let
     lazysql
   ];
 
+  jsTools = (
+    with pkgs;
+    [
+      bun
+      deno
+      nodejs
+      oxlint
+    ]
+    ++ (with nodePackages; [ pnpm ])
+  );
+
   editorTools = with pkgs; [
     # ** Treesitter **
     tree-sitter
@@ -101,5 +112,5 @@ let
   ];
 in
 {
-  home.packages = basic ++ misc ++ editorTools;
+  home.packages = basic ++ misc ++ jsTools ++ editorTools;
 }
