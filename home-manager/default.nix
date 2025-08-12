@@ -5,7 +5,7 @@
   ./fzf.nix
   ./gh.nix
   ./ghostty.nix
-  # ./git.nix
+  ./git.nix
   ./home.nix
   ./neovim.nix
   ./packages.nix
