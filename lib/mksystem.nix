@@ -79,22 +79,23 @@ systemFunc {
 
     {
       nix = {
-        extraOptions = ''
-          experimental-features = nix-command flakes
-        '';
-        enable = true;
-        gc = {
-          automatic = true; # Enable automatic garbage collection
-          interval = [
-            {
-              Hour = 4;
-              Minute = 30;
-              Weekday = 2;
-            }
-          ]; # Garbage collect every Tuesday at 4:30 AM
-          options = "--delete-older-than 7d"; # Delete old garbage
-        };
-        optimise.automatic = true; # Enable automatic garbage collection
+        enable = false;
+        # extraOptions = ''
+        #   experimental-features = nix-command flakes
+        # '';
+        # enable = true;
+        # gc = {
+        #   automatic = true; # Enable automatic garbage collection
+        #   interval = [
+        #     {
+        #       Hour = 4;
+        #       Minute = 30;
+        #       Weekday = 2;
+        #     }
+        #   ]; # Garbage collect every Tuesday at 4:30 AM
+        #   options = "--delete-older-than 7d"; # Delete old garbage
+        # };
+        # optimise.automatic = true; # Enable automatic garbage collection
         settings = rec {
           cores = 0;
           substituters = with caches; [
