@@ -9,6 +9,12 @@ let
     ripgrep
   ];
 
+  misc = with pkgs; [
+    lazygit
+    lazydocker
+    lazysql
+  ];
+
   editorTools = with pkgs; [
     # ** Treesitter **
     tree-sitter
@@ -95,5 +101,5 @@ let
   ];
 in
 {
-  home.packages = basic ++ editorTools;
+  home.packages = basic ++ misc ++ editorTools;
 }
