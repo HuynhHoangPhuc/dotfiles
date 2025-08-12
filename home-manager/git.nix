@@ -32,12 +32,10 @@
       "built-in-stubs.jar"
       "dumb.rdb"
       ".elixir_ls/"
-      ".vscode/"
       "npm-debug.log"
     ];
     lfs = {
       enable = true;
     };
-    package = pkgs.gitAndTools.gitFull;
   };
 }
