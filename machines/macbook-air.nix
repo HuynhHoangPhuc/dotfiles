@@ -24,6 +24,10 @@
       "clion"
       "pycharm"
       "visual-studio-code"
+      "r"
+      "rstudio"
+      "zalo"
+      "microsoft-excel"
     ];
     onActivation = {
       cleanup = "zap";
