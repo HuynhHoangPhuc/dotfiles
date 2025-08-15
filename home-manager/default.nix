@@ -6,6 +6,7 @@
   ./gh.nix
   ./ghostty.nix
   ./git.nix
+  ./go.nix
   ./home.nix
   ./neovim.nix
   ./packages.nix

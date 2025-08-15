@@ -61,7 +61,6 @@ let
     vscode-langservers-extracted
 
     # Go
-    go
     gopls
     gotools
     gofumpt
