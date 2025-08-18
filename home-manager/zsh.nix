@@ -1,5 +1,5 @@
 {
-  pkgs,
+  lib,
   ...
 }:
 
@@ -11,5 +11,7 @@
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
     enableCompletion = true;
+
+    initContent = lib.mkOrder 1500 (builtins.readFile ../config/zsh/.zshrc);
   };
 }

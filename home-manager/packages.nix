@@ -13,6 +13,10 @@ let
     lazygit
     lazydocker
     lazysql
+    R
+    cmake
+    # p7zip
+    p7zip-rar
   ];
 
   jsTools = (
