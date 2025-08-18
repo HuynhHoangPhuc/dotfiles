@@ -14,6 +14,5 @@
       vim-tmux-navigator
       catppuccin
     ];
-    # catppuccin.enable = false;
   };
 }
