@@ -8,6 +8,7 @@
   ./git.nix
   ./go.nix
   ./home.nix
+  ./lazygit.nix
   ./neovim.nix
   ./packages.nix
   ./starship.nix

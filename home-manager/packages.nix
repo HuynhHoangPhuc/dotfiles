@@ -10,7 +10,6 @@ let
   ];
 
   misc = with pkgs; [
-    lazygit
     lazydocker
     lazysql
     R
