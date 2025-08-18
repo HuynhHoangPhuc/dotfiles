@@ -14,4 +14,9 @@
       batwatch
     ];
   };
+
+  xdg.configFile."bat" = {
+    source = ../config/bat;
+    recursive = true;
+  };
 }
