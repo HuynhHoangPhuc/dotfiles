@@ -15,7 +15,6 @@ let
     lazysql
     R
     cmake
-    # p7zip
     p7zip-rar
   ];
 
