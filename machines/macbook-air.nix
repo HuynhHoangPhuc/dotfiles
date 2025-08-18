@@ -25,6 +25,7 @@
       "pycharm"
       "visual-studio-code"
       "docker-desktop"
+      "beekeeper-studio"
       "scroll-reverser"
       "roblox"
       "robloxstudio"
