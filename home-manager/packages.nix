@@ -9,6 +9,13 @@ let
     ripgrep
   ];
 
+  aiTools = with pkgs; [
+    qwen-code
+    gemini-cli
+    claude-code
+    crush
+  ];
+
   misc = with pkgs; [
     lazydocker
     lazysql
@@ -113,5 +120,5 @@ let
   ];
 in
 {
-  home.packages = basic ++ misc ++ jsTools ++ editorTools;
+  home.packages = basic ++ misc ++ jsTools ++ editorTools ++ aiTools;
 }
