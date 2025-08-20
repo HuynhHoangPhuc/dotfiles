@@ -24,16 +24,9 @@ let
     p7zip-rar
   ];
 
-  jsTools = (
-    with pkgs;
-    [
-      bun
-      deno
-      nodejs
-      oxlint
-    ]
-    ++ (with nodePackages; [ pnpm ])
-  );
+  jsTools = with pkgs; [
+    volta
+  ];
 
   editorTools = with pkgs; [
     # ** Treesitter **
