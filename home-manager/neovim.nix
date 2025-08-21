@@ -22,6 +22,8 @@
 
       fzf-lua
 
+      copilot-vim
+
       friendly-snippets
       blink-cmp
       nvim-autopairs
