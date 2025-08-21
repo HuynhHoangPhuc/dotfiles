@@ -12,6 +12,7 @@ let
   misc = with pkgs; [
     lazydocker
     lazysql
+    superfile
     R
     cmake
     p7zip-rar
