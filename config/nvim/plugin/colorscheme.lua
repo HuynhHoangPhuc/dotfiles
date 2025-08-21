@@ -2,6 +2,7 @@ require("catppuccin").setup({
 	integrations = {
 		fzf = true,
 		mini = { enable = true },
+		copilot_vim = true,
 	},
 	styles = {
 		conditionals = { "italic" },
