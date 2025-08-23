@@ -26,7 +26,7 @@
       "visual-studio-code"
       "docker-desktop"
       "beekeeper-studio"
-      "postman"
+      "yaak"
       "scroll-reverser"
       "roblox"
       "robloxstudio"
