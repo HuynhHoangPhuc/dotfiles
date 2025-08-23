@@ -99,6 +99,8 @@ let
     # Typescript
     vtsls
     biome
+    prettier
+    eslint
 
     # Yaml
     yaml-language-server
