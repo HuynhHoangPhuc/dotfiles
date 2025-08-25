@@ -59,7 +59,7 @@
     inputs:
     let
       env = if builtins.pathExists ./env.nix then import ./env.nix else { };
-      hmStateVersion = env.hmStateVersion or "25.05";
+      hmStateVersion = env.hmStateVersion or "25.11";
       darwinStateVersion = env.darwinStateVersion or 6;
       nixOSStateVersion = env.nixOSStateVersion or "25.05";
       username = env.username or "phuc";
