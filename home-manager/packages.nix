@@ -16,6 +16,7 @@ let
     R
     cmake
     p7zip-rar
+    pkg-config
   ];
 
   jsTools = with pkgs; [
