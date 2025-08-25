@@ -17,6 +17,7 @@ let
     cmake
     p7zip-rar
     pkg-config
+    vcpkg
   ];
 
   jsTools = with pkgs; [
