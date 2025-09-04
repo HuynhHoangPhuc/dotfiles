@@ -33,6 +33,8 @@
       "rstudio"
       "zalo"
       "microsoft-excel"
+      "microsoft-word"
+      "microsoft-powerpoint"
     ];
     onActivation = {
       cleanup = "zap";
