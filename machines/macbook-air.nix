@@ -35,6 +35,7 @@
       "microsoft-excel"
       "microsoft-word"
       "microsoft-powerpoint"
+      "google-drive"
     ];
     onActivation = {
       cleanup = "zap";
