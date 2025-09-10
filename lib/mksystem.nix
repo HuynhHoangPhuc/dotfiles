@@ -147,7 +147,7 @@ systemFunc {
       home-manager.useGlobalPkgs = true;
       home-manager.useUserPackages = true;
       home-manager.users.${username} = {
-        imports = (import hmConfig) ++ [ inputs.nix-index-database.homeModules.nix-index ];
+        imports = import hmConfig;
       };
       home-manager.extraSpecialArgs = {
         inherit username hmStateVersion;

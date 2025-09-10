@@ -30,11 +30,6 @@
       url = "github:zhaofengli/nix-homebrew";
     };
 
-    nix-index-database = {
-      url = "github:nix-community/nix-index-database";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     neovim-nightly = {
       url = "github:nix-community/neovim-nightly-overlay";
     };
