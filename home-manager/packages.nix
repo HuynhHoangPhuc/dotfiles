@@ -17,7 +17,7 @@ let
     cmake
     p7zip-rar
     pkg-config
-    vcpkg
+    google-cloud-sdk
   ];
 
   jsTools = with pkgs; [
