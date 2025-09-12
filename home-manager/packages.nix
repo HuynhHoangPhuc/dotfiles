@@ -77,7 +77,7 @@ let
     nixfmt-rfc-style
 
     # Python
-    python3Full
+    python314
     uv
     pyright
     ruff
