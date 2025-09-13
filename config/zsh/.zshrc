@@ -1,4 +1,4 @@
-export VOLTA_HOME="$HOME/.volta"
+export VOLTA_HOME="$HOME/.volta/bin"
 export VCPKG_ROOT="$HOME/.vcpkg-clion/vcpkg"
 export PATH=$VCPKG_ROOT:$PATH
 export PATH="${GOPATH}/bin:${PATH}"
