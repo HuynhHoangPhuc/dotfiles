@@ -33,6 +33,7 @@
       (pkgs.vimPlugins.nvim-treesitter.withPlugins (
         plugins: with plugins; [
           arduino
+          astro
           awk
           bash
           cpp
