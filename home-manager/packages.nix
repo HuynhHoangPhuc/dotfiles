@@ -51,7 +51,7 @@ let
     shfmt
 
     # Docker
-    dockerfile-language-server-nodejs
+    dockerfile-language-server
     docker-compose-language-service
     hadolint
 
