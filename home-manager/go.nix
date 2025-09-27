@@ -3,6 +3,6 @@
 {
   programs.go = {
     enable = true;
-    goPath = "Developer/Go";
+    env.GOPATH = "Developer/Go";
   };
 }
