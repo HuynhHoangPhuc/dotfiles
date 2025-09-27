@@ -30,7 +30,6 @@
       "scroll-reverser"
       "roblox"
       "robloxstudio"
-      "rstudio"
       "zalo"
       "microsoft-excel"
       "microsoft-word"
