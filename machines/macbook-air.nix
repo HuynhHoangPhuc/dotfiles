@@ -35,6 +35,7 @@
       "microsoft-word"
       "microsoft-powerpoint"
       "google-drive"
+      "orion"
     ];
     onActivation = {
       cleanup = "zap";
