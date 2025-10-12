@@ -22,7 +22,7 @@
 
       fzf-lua
 
-      copilot-vim
+      # copilot-vim
 
       friendly-snippets
       blink-cmp
