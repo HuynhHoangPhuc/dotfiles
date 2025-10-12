@@ -26,16 +26,13 @@
       "visual-studio-code"
       "docker-desktop"
       "beekeeper-studio"
-      "yaak"
       "scroll-reverser"
-      "roblox"
-      "robloxstudio"
       "zalo"
       "microsoft-excel"
       "microsoft-word"
       "microsoft-powerpoint"
       "google-drive"
-      "orion"
+      "wireshark-app"
     ];
     onActivation = {
       cleanup = "zap";
