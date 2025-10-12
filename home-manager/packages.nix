@@ -18,6 +18,7 @@ let
     p7zip-rar
     pkg-config
     google-cloud-sdk
+    typst
   ];
 
   jsTools = with pkgs; [
