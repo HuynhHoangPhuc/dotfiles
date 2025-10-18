@@ -19,6 +19,7 @@ let
     pkg-config
     google-cloud-sdk
     typst
+    poppler-utils
   ];
 
   jsTools = with pkgs; [
