@@ -33,6 +33,7 @@
       "microsoft-powerpoint"
       "google-drive"
       "wireshark-app"
+      "orbstack"
     ];
     onActivation = {
       cleanup = "zap";
