@@ -1,16 +1,10 @@
-{
-  pkgs,
-  ...
-}:
+{ ... }:
 
 {
   programs.git = {
     enable = true;
 
-    delta = {
-      enable = true;
-    };
-    extraConfig = {
+    settings = {
       core = {
         editor = "nvim";
         whitespace = "trailing-space,space-before-tab";
