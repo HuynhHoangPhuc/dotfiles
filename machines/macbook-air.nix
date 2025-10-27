@@ -23,6 +23,7 @@
       "ghostty"
       "clion"
       "pycharm"
+      "goland"
       "visual-studio-code"
       "docker-desktop"
       "beekeeper-studio"
