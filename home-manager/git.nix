@@ -9,6 +9,10 @@
         editor = "nvim";
         whitespace = "trailing-space,space-before-tab";
       };
+
+      init = {
+        defaultBranch = "main";
+      };
       # credential.helper = "osxkeychain";
       # commit.gpgsign = "true";
       # gpg.program = "gpg2";
