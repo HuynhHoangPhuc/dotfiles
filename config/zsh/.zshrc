@@ -1,8 +1,8 @@
-export VOLTA_HOME="$HOME/.volta/bin"
+export VOLTA_HOME="$HOME/.volta"
 export VCPKG_ROOT="$HOME/.vcpkg-clion/vcpkg"
 export PATH=$VCPKG_ROOT:$PATH
-export PATH="${GOPATH}/bin:${PATH}"
-export PATH="$VOLTA_HOME/bin:${PATH}"
+export PATH="$GOPATH/bin:$PATH"
+export PATH="$VOLTA_HOME/bin:$PATH"
 
 export FZF_DEFAULT_OPTS=" \
 --color=bg+:#313244,bg:#1E1E2E,spinner:#F5E0DC,hl:#F38BA8 \
