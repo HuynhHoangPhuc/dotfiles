@@ -1,8 +1,11 @@
 export VOLTA_HOME="$HOME/.volta"
 export VCPKG_ROOT="$HOME/.vcpkg-clion/vcpkg"
+export JAVA_HOME="/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home"
 export PATH=$VCPKG_ROOT:$PATH
 export PATH="$GOPATH/bin:$PATH"
 export PATH="$VOLTA_HOME/bin:$PATH"
+export PATH="$JAVA_HOME/bin:$PATH"
+export PATH="/usr/local/share/dotnet/:$PATH"
 
 export FZF_DEFAULT_OPTS=" \
 --color=bg+:#313244,bg:#1E1E2E,spinner:#F5E0DC,hl:#F38BA8 \

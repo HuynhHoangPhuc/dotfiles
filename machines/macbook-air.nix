@@ -26,15 +26,12 @@
       "goland"
       "visual-studio-code"
       "docker-desktop"
-      "beekeeper-studio"
       "scroll-reverser"
       "zalo"
       "microsoft-excel"
       "microsoft-word"
       "microsoft-powerpoint"
       "google-drive"
-      "wireshark-app"
-      "orbstack"
     ];
     onActivation = {
       cleanup = "zap";

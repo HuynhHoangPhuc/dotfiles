@@ -39,7 +39,7 @@ let
     vscode-extensions.vadimcn.vscode-lldb
 
     # C#
-    dotnet-sdk_9
+    # dotnet-sdk_9
     omnisharp-roslyn
     csharpier
 
