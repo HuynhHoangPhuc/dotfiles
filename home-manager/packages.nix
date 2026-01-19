@@ -20,6 +20,8 @@ let
     google-cloud-sdk
     typst
     poppler-utils
+    kubectl
+    k9s
   ];
 
   jsTools = with pkgs; [
