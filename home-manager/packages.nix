@@ -78,7 +78,7 @@ let
 
     # Nix
     nil
-    nixfmt-rfc-style
+    nixfmt
 
     # Python
     python314
