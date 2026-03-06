@@ -1,4 +1,16 @@
 local ensure_installed = {}
+local indent_enabled = {
+	c = true,
+	cpp = true,
+	css = true,
+	html = true,
+	javascript = true,
+	javascriptreact = true,
+	lua = true,
+	typescriptreact = true,
+	typescript = true,
+	tsx = true,
+}
 
 if not os.getenv("DOTFILES_WITH_FLAKE") then
 	ensure_installed = {
@@ -13,27 +25,56 @@ if not os.getenv("DOTFILES_WITH_FLAKE") then
 	}
 end
 
-require("nvim-treesitter.configs").setup({
+local ok, treesitter = pcall(require, "nvim-treesitter")
+
+if not ok then
+	vim.schedule(function()
+		vim.notify("nvim-treesitter is unavailable", vim.log.levels.WARN)
+	end)
+	return
+end
+
+treesitter.setup({
 	auto_install = false,
-	indent = { enable = true },
-	highlight = {
-		enable = true,
+})
 
-		-- Or use a function for more flexibility, e.g. to disable slow treesitter highlight for large files
-		disable = function(_, buf)
-			local max_filesize = 100 * 1024 -- 100 KB
-			local ok, stats =
-				pcall(vim.loop.fs_stat, vim.api.nvim_buf_get_name(buf))
-			if ok and stats and stats.size > max_filesize then
-				return true
-			end
-		end,
+if #ensure_installed > 0 then
+	vim.schedule(function()
+		local installed = pcall(treesitter.install, ensure_installed)
 
-		-- Setting this to true will run `:h syntax` and tree-sitter at the same time.
-		-- Set this to `true` if you depend on 'syntax' being enabled (like for indentation).
-		-- Using this option may slow down your editor, and you may see some duplicate highlights.
-		-- Instead of true it can also be a list of languages
-		additional_vim_regex_highlighting = false,
-	},
-	ensure_installed = ensure_installed,
+		if not installed then
+			vim.notify(
+				"nvim-treesitter parser install failed",
+				vim.log.levels.WARN
+			)
+		end
+	end)
+end
+
+local uv = vim.uv or vim.loop
+
+local function is_large_file(buf)
+	local max_filesize = 100 * 1024 -- 100 KB
+	local ok_stat, stats = pcall(uv.fs_stat, vim.api.nvim_buf_get_name(buf))
+
+	return ok_stat and stats and stats.size > max_filesize
+end
+
+local group = vim.api.nvim_create_augroup("dotfiles-treesitter", { clear = true })
+
+vim.api.nvim_create_autocmd("FileType", {
+	group = group,
+	callback = function(args)
+		if is_large_file(args.buf) then
+			return
+		end
+
+		local started = pcall(vim.treesitter.start, args.buf)
+		local filetype = vim.bo[args.buf].filetype
+
+		if started and indent_enabled[filetype] then
+			vim.bo[args.buf].indentexpr =
+				"v:lua.require'nvim-treesitter'.indentexpr()"
+		end
+	end,
 })

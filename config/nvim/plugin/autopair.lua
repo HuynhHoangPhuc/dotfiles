@@ -1,4 +1,9 @@
-local npairs = require("nvim-autopairs")
+local npairs_ok, npairs = pcall(require, "nvim-autopairs")
+
+if not npairs_ok then
+	return
+end
+
 local Rule = require("nvim-autopairs.rule")
 local conds = require("nvim-autopairs.conds")
 
@@ -14,4 +19,8 @@ npairs.add_rule(Rule("<", ">", {
 	return opts.char == ">"
 end))
 
-require("nvim-ts-autotag").setup()
+local autotag_ok, autotag = pcall(require, "nvim-ts-autotag")
+
+if autotag_ok then
+	autotag.setup()
+end
