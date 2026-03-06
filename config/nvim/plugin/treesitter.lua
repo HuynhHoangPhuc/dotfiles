@@ -39,16 +39,32 @@ treesitter.setup({
 })
 
 if #ensure_installed > 0 then
-	vim.schedule(function()
-		local installed = pcall(treesitter.install, ensure_installed)
+	local installed = {}
 
-		if not installed then
-			vim.notify(
-				"nvim-treesitter parser install failed",
-				vim.log.levels.WARN
-			)
+	for _, lang in ipairs(treesitter.get_installed("parsers")) do
+		installed[lang] = true
+	end
+
+	local missing = {}
+
+	for _, lang in ipairs(ensure_installed) do
+		if not installed[lang] then
+			table.insert(missing, lang)
 		end
-	end)
+	end
+
+	if #missing > 0 then
+		vim.schedule(function()
+			local install_ok = pcall(treesitter.install, missing)
+
+			if not install_ok then
+				vim.notify(
+					"nvim-treesitter parser install failed",
+					vim.log.levels.WARN
+				)
+			end
+		end)
+	end
 end
 
 local uv = vim.uv or vim.loop
