@@ -1,46 +1,6 @@
--- require("nvim-tree").setup({
--- 	filters = { dotfiles = false },
--- 	disable_netrw = true,
--- 	hijack_cursor = true,
--- 	sync_root_with_cwd = true,
--- 	update_focused_file = {
--- 		enable = true,
--- 		update_root = false,
--- 	},
--- 	view = {
--- 		width = 45,
--- 		preserve_window_proportions = true,
--- 	},
--- 	renderer = {
--- 		root_folder_label = false,
--- 		highlight_git = true,
--- 		indent_markers = { enable = true },
--- 		icons = {
--- 			glyphs = {
--- 				default = "󰈚",
--- 				folder = {
--- 					default = "",
--- 					empty = "",
--- 					empty_open = "",
--- 					open = "",
--- 					symlink = "",
--- 				},
--- 				git = { unmerged = "" },
--- 			},
--- 		},
--- 	},
--- })
---
--- vim.keymap.set("n", "<leader>e", "<cmd>NvimTreeToggle<cr>")
--- vim.keymap.set("n", "<leader>E", "<cmd>NvimTreeFocus<cr>")
-
--- require("oil").setup()
--- vim.keymap.set("n", "-", "<cmd>Oil<cr>", { desc = "Open parent directory" })
-
--- Git integration: https://gist.github.com/bassamsdata/eec0a3065152226581f8d4244cce9051
-
 local _, MiniFiles = pcall(require, "mini.files")
 MiniFiles.setup()
+
 vim.keymap.set("n", "<leader>e", function()
 	MiniFiles.open(vim.api.nvim_buf_get_name(0), true)
 end)
@@ -50,11 +10,16 @@ end)
 
 local nsMiniFiles = vim.api.nvim_create_namespace("mini_files_git")
 local autocmd = vim.api.nvim_create_autocmd
-
--- Cache for git status
-local gitStatusCache = {}
-local cacheTimeout = 2000 -- in milliseconds
 local uv = vim.uv or vim.loop
+
+-- Separate caches with different TTLs:
+-- git status changes frequently, ignored files rarely change
+local cache = {
+	status  = {},  -- [dir] = { time, map }   TTL: 10s
+	ignored = {},  -- [dir] = { time, map }   TTL: 60s
+}
+local STATUS_TTL  = 10   -- seconds
+local IGNORED_TTL = 60   -- seconds
 
 local function isSymlink(path)
 	local stat = uv.fs_lstat(path)
@@ -62,217 +27,182 @@ local function isSymlink(path)
 end
 
 ---@type table<string, {symbol: string, hlGroup: string}>
----@param status string
----@return string symbol, string hlGroup
+local symbolMap = {
+	-- stylua: ignore start
+	[" M"] = { symbol = "•",  hlGroup = "MiniDiffSignChange" }, -- modified in working dir
+	["M "] = { symbol = "✹",  hlGroup = "MiniDiffSignChange" }, -- modified in index
+	["MM"] = { symbol = "≠",  hlGroup = "MiniDiffSignChange" }, -- modified in both
+	["A "] = { symbol = "+",  hlGroup = "MiniDiffSignAdd"    }, -- added to staging
+	["AA"] = { symbol = "≈",  hlGroup = "MiniDiffSignAdd"    }, -- added in both
+	["D "] = { symbol = "-",  hlGroup = "MiniDiffSignDelete" }, -- deleted from staging
+	["AM"] = { symbol = "⊕",  hlGroup = "MiniDiffSignChange" }, -- added in worktree, modified in index
+	["AD"] = { symbol = "-•", hlGroup = "MiniDiffSignChange" }, -- added in index, deleted in worktree
+	["R "] = { symbol = "→",  hlGroup = "MiniDiffSignChange" }, -- renamed in index
+	["U "] = { symbol = "‖",  hlGroup = "MiniDiffSignChange" }, -- unmerged path
+	["UU"] = { symbol = "⇄",  hlGroup = "MiniDiffSignAdd"    }, -- both modified (unmerged)
+	["UA"] = { symbol = "⊕",  hlGroup = "MiniDiffSignAdd"    }, -- added by them (unmerged)
+	["??"] = { symbol = "?",  hlGroup = "MiniDiffSignDelete" }, -- untracked
+	["!!"] = { symbol = "!",  hlGroup = "MiniDiffSignChange" }, -- ignored
+	-- stylua: ignore end
+}
+
 local function mapSymbols(status, is_symlink)
-	local statusMap = {
-    -- stylua: ignore start 
-    [" M"] = { symbol = "•", hlGroup  = "MiniDiffSignChange"}, -- Modified in the working directory
-    ["M "] = { symbol = "✹", hlGroup  = "MiniDiffSignChange"}, -- modified in index
-    ["MM"] = { symbol = "≠", hlGroup  = "MiniDiffSignChange"}, -- modified in both working tree and index
-    ["A "] = { symbol = "+", hlGroup  = "MiniDiffSignAdd"   }, -- Added to the staging area, new file
-    ["AA"] = { symbol = "≈", hlGroup  = "MiniDiffSignAdd"   }, -- file is added in both working tree and index
-    ["D "] = { symbol = "-", hlGroup  = "MiniDiffSignDelete"}, -- Deleted from the staging area
-    ["AM"] = { symbol = "⊕", hlGroup  = "MiniDiffSignChange"}, -- added in working tree, modified in index
-    ["AD"] = { symbol = "-•", hlGroup = "MiniDiffSignChange"}, -- Added in the index and deleted in the working directory
-    ["R "] = { symbol = "→", hlGroup  = "MiniDiffSignChange"}, -- Renamed in the index
-    ["U "] = { symbol = "‖", hlGroup  = "MiniDiffSignChange"}, -- Unmerged path
-    ["UU"] = { symbol = "⇄", hlGroup  = "MiniDiffSignAdd"   }, -- file is unmerged
-    ["UA"] = { symbol = "⊕", hlGroup  = "MiniDiffSignAdd"   }, -- file is unmerged and added in working tree
-    ["??"] = { symbol = "?", hlGroup  = "MiniDiffSignDelete"}, -- Untracked files
-    ["!!"] = { symbol = "!", hlGroup  = "MiniDiffSignChange"}, -- Ignored files
-		-- stylua: ignore end
-	}
-
-	local result = statusMap[status] or { symbol = "?", hlGroup = "NonText" }
-	local gitSymbol = result.symbol
-	local gitHlGroup = result.hlGroup
-
+	local result = symbolMap[status] or { symbol = "?", hlGroup = "NonText" }
 	local symlinkSymbol = is_symlink and "↩" or ""
-
-	-- Combine symlink symbol with Git status if both exist
-	local combinedSymbol = (symlinkSymbol .. gitSymbol)
-		:gsub("^%s+", "")
-		:gsub("%s+$", "")
-	-- Change the color of the symlink icon from "MiniDiffSignDelete" to something else
-	local combinedHlGroup = is_symlink and "MiniDiffSignDelete" or gitHlGroup
-
-	return combinedSymbol, combinedHlGroup
+	local combined = (symlinkSymbol .. result.symbol):gsub("^%s+", ""):gsub("%s+$", "")
+	local hlGroup = is_symlink and "MiniDiffSignDelete" or result.hlGroup
+	return combined, hlGroup
 end
 
----@param cwd string
----@param callback function
----@return nil
-local function fetchGitStatus(cwd, callback)
-	local clean_cwd = cwd:gsub("^minifiles://%d+/", "")
-	---@param content table
-	local function on_exit(content)
-		if content.code == 0 then
-			callback(content.stdout)
-			-- vim.g.content = content.stdout
+-- Get the directory currently displayed in a mini.files buffer
+local function getCurrentDir(buf_id)
+	local entry = MiniFiles.get_fs_entry(buf_id, 1)
+	if not entry then return nil end
+	return vim.fn.fnamemodify(entry.path, ":h")
+end
+
+-- Parse `git status --porcelain .` into { [name] = "XY" }
+-- Propagates status up to parent directory entries for nested paths
+local function parseGitStatus(content)
+	local map = {}
+	for line in content:gmatch("[^\r\n]+") do
+		local status, filePath = line:match("^(..)%s+(.*)")
+		if status and filePath then
+			local parts = {}
+			for part in filePath:gmatch("[^/]+") do
+				table.insert(parts, part)
+			end
+			local key = ""
+			for i, part in ipairs(parts) do
+				key = i == 1 and part or (key .. "/" .. part)
+				if i == #parts then
+					map[key] = status
+				elseif not map[key] then
+					-- propagate to parent dir so it shows a sign too
+					map[key] = status
+				end
+			end
 		end
 	end
-	---@see vim.system
-	vim.system(
-		{ "git", "status", "--ignored", "--porcelain" },
-		{ text = true, cwd = clean_cwd },
-		on_exit
-	)
+	return map
 end
 
----@param buf_id integer
----@param gitStatusMap table
----@return nil
-local function updateMiniWithGit(buf_id, gitStatusMap)
-	vim.schedule(function()
-		local nlines = vim.api.nvim_buf_line_count(buf_id)
-		local cwd = vim.fs.root(buf_id, ".git")
-		local escapedcwd = cwd and vim.pesc(cwd)
-		if not escapedcwd then
-			return
+-- Parse `git ls-files --ignored` into { [name] = "!!" }
+local function parseIgnoredFiles(content)
+	local map = {}
+	for line in content:gmatch("[^\r\n]+") do
+		local name = line:gsub("/$", "")  -- strip trailing slash from dirs
+		if name ~= "" then
+			map[name] = "!!"
 		end
-		escapedcwd = vim.fs.normalize(escapedcwd)
+	end
+	return map
+end
+
+-- Apply git signs to all entries in a mini.files buffer
+local function applyGitSigns(buf_id, combinedMap)
+	vim.schedule(function()
+		if not vim.api.nvim_buf_is_valid(buf_id) then return end
+		local nlines = vim.api.nvim_buf_line_count(buf_id)
+		vim.api.nvim_buf_clear_namespace(buf_id, nsMiniFiles, 0, -1)
 
 		for i = 1, nlines do
 			local entry = MiniFiles.get_fs_entry(buf_id, i)
-			if not entry then
-				break
-			end
-			local relativePath = entry.path:gsub("^" .. escapedcwd .. "/", "")
-			local status = gitStatusMap[relativePath]
+			if not entry then break end
 
+			local status = combinedMap[entry.name]
 			if status then
-				local symbol, hlGroup =
-					mapSymbols(status, isSymlink(entry.path))
+				local symbol, hlGroup = mapSymbols(status, isSymlink(entry.path))
 				vim.api.nvim_buf_set_extmark(buf_id, nsMiniFiles, i - 1, 0, {
 					sign_text = symbol,
 					sign_hl_group = hlGroup,
 					priority = 2,
 				})
-				-- This below code is responsible for coloring the text of the items. comment it out if you don't want that
-				local line =
-					vim.api.nvim_buf_get_lines(buf_id, i - 1, i, false)[1]
-				-- Find the name position accounting for potential icons
-				local nameStartCol = line:find(vim.pesc(entry.name)) or 0
-
-				if nameStartCol > 0 then
-					vim.api.nvim_buf_set_extmark(
-						buf_id,
-						nsMiniFiles,
-						i - 1,
-						nameStartCol - 1,
-						{
-							end_col = nameStartCol + #entry.name - 1,
-							hl_group = hlGroup,
-						}
-					)
+				-- Highlight the filename text as well
+				local line = vim.api.nvim_buf_get_lines(buf_id, i - 1, i, false)[1]
+				local nameCol = line:find(vim.pesc(entry.name)) or 0
+				if nameCol > 0 then
+					vim.api.nvim_buf_set_extmark(buf_id, nsMiniFiles, i - 1, nameCol - 1, {
+						end_col = nameCol + #entry.name - 1,
+						hl_group = hlGroup,
+					})
 				end
-			else
 			end
 		end
 	end)
 end
 
--- Thanks for the idea of gettings https://github.com/refractalize/oil-git-status.nvim signs for dirs
----@param content string
----@return table
-local function parseGitStatus(content)
-	local gitStatusMap = {}
-	-- lua match is faster than vim.split (in my experience )
-	for line in content:gmatch("[^\r\n]+") do
-		local status, filePath = string.match(line, "^(..)%s+(.*)")
-		-- Split the file path into parts
-		local parts = {}
-		for part in filePath:gmatch("[^/]+") do
-			table.insert(parts, part)
-		end
-		-- Start with the root directory
-		local currentKey = ""
-		for i, part in ipairs(parts) do
-			if i > 1 then
-				-- Concatenate parts with a separator to create a unique key
-				currentKey = currentKey .. "/" .. part
-			else
-				currentKey = part
-			end
-			-- If it's the last part, it's a file, so add it with its status
-			if i == #parts then
-				gitStatusMap[currentKey] = status
-			else
-				-- If it's not the last part, it's a directory. Check if it exists, if not, add it.
-				if not gitStatusMap[currentKey] then
-					gitStatusMap[currentKey] = status
+-- Load git status for the directory shown in buf_id.
+-- Two async queries run independently:
+--   1. git status --porcelain .      (fast, ~50-100ms) — shown first
+--   2. git ls-files --ignored ...    (dedicated cmd, ~100-300ms) — merged after
+-- Results are cached separately; ignored files use a longer TTL.
+local function updateGitStatus(buf_id)
+	local dir = getCurrentDir(buf_id)
+	if not dir or not vim.fs.root(dir, ".git") then return end
+
+	-- Merge both caches and redraw signs
+	local function redraw()
+		local sMap = cache.status[dir]  and cache.status[dir].map  or {}
+		local iMap = cache.ignored[dir] and cache.ignored[dir].map or {}
+		-- status entries take priority over ignored markers on conflict
+		applyGitSigns(buf_id, vim.tbl_extend("keep", sMap, iMap))
+	end
+
+	local now = os.time()
+
+	-- Query 1: fast status (modified/added/deleted/untracked)
+	if cache.status[dir] and (now - cache.status[dir].time < STATUS_TTL) then
+		redraw()
+	else
+		vim.system(
+			{ "git", "status", "--porcelain", "." },
+			{ text = true, cwd = dir },
+			function(result)
+				if result.code == 0 then
+					cache.status[dir] = { time = os.time(), map = parseGitStatus(result.stdout) }
+					redraw()
 				end
 			end
-		end
+		)
 	end
-	return gitStatusMap
-end
 
----@param buf_id integer
----@return nil
-local function updateGitStatus(buf_id)
-	if not vim.fs.root(buf_id, ".git") then
-		return
+	-- Query 2: ignored files (runs in parallel, merges when done)
+	if not (cache.ignored[dir] and (now - cache.ignored[dir].time < IGNORED_TTL)) then
+		vim.system(
+			{ "git", "ls-files", "--ignored", "--exclude-standard", "--others", "--directory", "." },
+			{ text = true, cwd = dir },
+			function(result)
+				if result.code == 0 then
+					cache.ignored[dir] = { time = os.time(), map = parseIgnoredFiles(result.stdout) }
+					redraw()
+				end
+			end
+		)
 	end
-	local cwd = vim.fs.root(buf_id, ".git")
-	-- local cwd = vim.fn.expand("%:p:h")
-	if not cwd then
-		return
-	end
-	local currentTime = os.time()
-
-	if
-		gitStatusCache[cwd]
-		and currentTime - gitStatusCache[cwd].time < cacheTimeout
-	then
-		updateMiniWithGit(buf_id, gitStatusCache[cwd].statusMap)
-	else
-		fetchGitStatus(cwd, function(content)
-			local gitStatusMap = parseGitStatus(content)
-			gitStatusCache[cwd] = {
-				time = currentTime,
-				statusMap = gitStatusMap,
-			}
-			updateMiniWithGit(buf_id, gitStatusMap)
-		end)
-	end
-end
-
----@return nil
-local function clearCache()
-	gitStatusCache = {}
 end
 
 local function augroup(name)
 	return vim.api.nvim_create_augroup("MiniFiles_" .. name, { clear = true })
 end
 
+-- Load signs when explorer opens
 autocmd("User", {
 	group = augroup("start"),
 	pattern = "MiniFilesExplorerOpen",
 	callback = function()
-		local bufnr = vim.api.nvim_get_current_buf()
-		updateGitStatus(bufnr)
+		updateGitStatus(vim.api.nvim_get_current_buf())
 	end,
 })
 
-autocmd("User", {
-	group = augroup("close"),
-	pattern = "MiniFilesExplorerClose",
-	callback = function()
-		clearCache()
-	end,
-})
-
+-- Load signs when navigating into a new directory (new buffer created per dir)
 autocmd("User", {
 	group = augroup("update"),
 	pattern = "MiniFilesBufferUpdate",
 	callback = function(args)
-		local bufnr = args.data.buf_id
-		local cwd = vim.fs.root(bufnr, ".git")
-		if gitStatusCache[cwd] then
-			updateMiniWithGit(bufnr, gitStatusCache[cwd].statusMap)
-		end
+		updateGitStatus(args.data.buf_id)
 	end,
 })
+
+-- Cache is intentionally NOT cleared on close — TTL handles expiry.
+-- This makes reopening the explorer near-instant on repeat opens.
