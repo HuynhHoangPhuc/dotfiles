@@ -1,8 +1,16 @@
 local _, MiniFiles = pcall(require, "mini.files")
-MiniFiles.setup()
+MiniFiles.setup({
+	content = {
+		filter = function(entry)
+			return entry.name ~= ".git"
+		end,
+	},
+})
 
 vim.keymap.set("n", "<leader>e", function()
-	MiniFiles.open(vim.api.nvim_buf_get_name(0), true)
+	if not MiniFiles.close() then
+		MiniFiles.open(vim.api.nvim_buf_get_name(0), true)
+	end
 end)
 vim.keymap.set("n", "<leader>E", function()
 	MiniFiles.open(vim.uv.cwd(), true)
@@ -42,7 +50,7 @@ local symbolMap = {
 	["UU"] = { symbol = "⇄",  hlGroup = "MiniDiffSignAdd"    }, -- both modified (unmerged)
 	["UA"] = { symbol = "⊕",  hlGroup = "MiniDiffSignAdd"    }, -- added by them (unmerged)
 	["??"] = { symbol = "?",  hlGroup = "MiniDiffSignDelete" }, -- untracked
-	["!!"] = { symbol = "!",  hlGroup = "MiniDiffSignChange" }, -- ignored
+	["!!"] = { symbol = "",   hlGroup = "Comment"            }, -- ignored (no sign, dimmed color)
 	-- stylua: ignore end
 }
 
@@ -113,11 +121,13 @@ local function applyGitSigns(buf_id, combinedMap)
 			local status = combinedMap[entry.name]
 			if status then
 				local symbol, hlGroup = mapSymbols(status, isSymlink(entry.path))
-				vim.api.nvim_buf_set_extmark(buf_id, nsMiniFiles, i - 1, 0, {
-					sign_text = symbol,
-					sign_hl_group = hlGroup,
-					priority = 2,
-				})
+				if symbol ~= "" then
+					vim.api.nvim_buf_set_extmark(buf_id, nsMiniFiles, i - 1, 0, {
+						sign_text = symbol,
+						sign_hl_group = hlGroup,
+						priority = 2,
+					})
+				end
 				-- Highlight the filename text as well
 				local line = vim.api.nvim_buf_get_lines(buf_id, i - 1, i, false)[1]
 				local nameCol = line:find(vim.pesc(entry.name)) or 0
