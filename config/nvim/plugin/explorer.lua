@@ -70,12 +70,22 @@ local function getCurrentDir(buf_id)
 end
 
 -- Parse `git status --porcelain .` into { [name] = "XY" }
+-- prefix: path of the displayed dir relative to git root (e.g. "src/components")
+--         pass "" when viewing the repo root
 -- Propagates status up to parent directory entries for nested paths
-local function parseGitStatus(content)
+local function parseGitStatus(content, prefix)
 	local map = {}
+	local stripPrefix = prefix ~= "" and (prefix .. "/") or ""
 	for line in content:gmatch("[^\r\n]+") do
 		local status, filePath = line:match("^(..)%s+(.*)")
 		if status and filePath then
+			-- git status paths are always relative to the repo root;
+			-- strip the current-dir prefix so keys are relative to the displayed dir
+			if stripPrefix ~= "" then
+				local stripped = filePath:match("^" .. vim.pesc(stripPrefix) .. "(.+)")
+				if not stripped then goto continue end
+				filePath = stripped
+			end
 			local parts = {}
 			for part in filePath:gmatch("[^/]+") do
 				table.insert(parts, part)
@@ -90,6 +100,7 @@ local function parseGitStatus(content)
 					map[key] = status
 				end
 			end
+			::continue::
 		end
 	end
 	return map
@@ -151,6 +162,11 @@ local function updateGitStatus(buf_id)
 	local dir = getCurrentDir(buf_id)
 	if not dir or not vim.fs.root(dir, ".git") then return end
 
+	-- Prefix = dir relative to git root (e.g. "src/components"); "" at repo root.
+	-- Needed because `git status` always outputs paths relative to the repo root.
+	local gitRoot = vim.fs.root(dir, ".git") or ""
+	local prefix = gitRoot ~= "" and dir:sub(#gitRoot + 2) or ""
+
 	-- Merge both caches and redraw signs
 	local function redraw()
 		local sMap = cache.status[dir]  and cache.status[dir].map  or {}
@@ -170,7 +186,7 @@ local function updateGitStatus(buf_id)
 			{ text = true, cwd = dir },
 			function(result)
 				if result.code == 0 then
-					cache.status[dir] = { time = os.time(), map = parseGitStatus(result.stdout) }
+					cache.status[dir] = { time = os.time(), map = parseGitStatus(result.stdout, prefix) }
 					redraw()
 				end
 			end
