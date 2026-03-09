@@ -6,6 +6,7 @@
   ./fzf.nix
   ./gh.nix
   ./ghostty.nix
+  ./wezterm.nix
   ./git.nix
   ./go.nix
   ./home.nix
