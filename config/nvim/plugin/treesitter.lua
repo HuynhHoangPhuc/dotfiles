@@ -41,7 +41,7 @@ treesitter.setup({
 if #ensure_installed > 0 then
 	local installed = {}
 
-	for _, lang in ipairs(treesitter.get_installed("parsers")) do
+	for _, lang in ipairs(treesitter.get_installed()) do
 		installed[lang] = true
 	end
 
