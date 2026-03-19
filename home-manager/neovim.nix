@@ -96,6 +96,9 @@
       clangd_extensions-nvim
       omnisharp-extended-lsp-nvim
 
+      markdown-preview-nvim
+      render-markdown-nvim
+
       indent-blankline-nvim
       gitsigns-nvim
     ];

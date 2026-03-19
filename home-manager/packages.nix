@@ -76,6 +76,11 @@ let
     lua-language-server
     stylua
 
+    # Markdown
+    marksman
+    markdownlint-cli2
+    markdown-toc
+
     # Nix
     nil
     nixfmt
