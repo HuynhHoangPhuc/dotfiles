@@ -57,7 +57,7 @@ dotfiles/
     │   │   ├── packages/             # Mason auto-installer
     │   │   │   └── init.lua          # 600+ tool mappings (LSP, formatter, linter)
     │   │   │
-    │   │   └── languages/            # Per-language configs (13 languages)
+    │   │   └── languages/            # Per-language configs (14 languages)
     │   │       ├── typescript.lua     # TypeScript/JavaScript: eslint, prettier, typescript-language-server
     │   │       ├── python.lua         # Python: pyright, ruff
     │   │       ├── go.lua             # Go: gopls, gofumpt, golangci-lint
@@ -70,6 +70,7 @@ dotfiles/
     │   │       ├── tailwind.lua       # Tailwind CSS: tailwindcss-language-server
     │   │       ├── astro.lua          # Astro: astro-language-server
     │   │       ├── docker.lua         # Docker: dockerfile-language-server
+    │   │       ├── markdown.lua       # Markdown: marksman, prettier, markdownlint-cli2, markdown-toc
     │   │       ├── nix.lua            # Nix: nil, nixfmt
     │   │       └── cmake.lua          # CMake: cmake-language-server
     │   │
@@ -203,10 +204,11 @@ Auto-discovery pattern:
 - Applies LSP, formatter, linter settings per-language
 
 ### config/nvim/lua/languages/*.lua
-Per-language setup (13 total):
+Per-language setup (14 total):
 - typescript.lua: LSP (typescript-language-server), formatter (prettier), linter (eslint)
 - python.lua: LSP (pyright), formatter+linter (ruff)
 - go.lua: LSP (gopls), formatters (gofumpt, goimports), linter (golangci-lint)
+- markdown.lua: LSP (marksman), formatters (prettier, markdownlint-cli2, markdown-toc), linter (markdownlint-cli2), MDX support
 - etc.
 - Each auto-discovered by languageconfigs.lua
 

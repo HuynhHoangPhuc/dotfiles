@@ -22,6 +22,8 @@ if not os.getenv("DOTFILES_WITH_FLAKE") then
 		"javascript",
 		"typescript",
 		"tsx",
+		"markdown",
+		"markdown_inline",
 	}
 end
 
