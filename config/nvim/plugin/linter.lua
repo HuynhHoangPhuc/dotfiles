@@ -1,4 +1,17 @@
-require("lint").linters_by_ft = require("languageconfigs").lint.linters_by_ft
+local langconfigs = require("languageconfigs")
+require("lint").linters_by_ft = langconfigs.lint.linters_by_ft
+
+-- Apply per-linter overrides from language configs
+if langconfigs.lint.linters then
+	for name, overrides in pairs(langconfigs.lint.linters) do
+		local linter = require("lint").linters[name]
+		if linter then
+			for k, v in pairs(overrides) do
+				linter[k] = v
+			end
+		end
+	end
+end
 
 local M = {}
 local lint = require("lint")
