@@ -4,6 +4,13 @@ vim.filetype.add({
 	extension = { mdx = "markdown.mdx" },
 })
 
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = "markdown",
+	callback = function()
+		vim.opt_local.signcolumn = "no"
+	end,
+})
+
 M.lsp = {
 	servers = {
 		marksman = {},
