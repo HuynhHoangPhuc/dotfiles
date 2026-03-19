@@ -30,6 +30,7 @@ vim.pack.add({
 
 	{ src = "https://github.com/echasnovski/mini.files" },
 	{ src = "https://github.com/stevearc/oil.nvim" },
+	{ src = "https://github.com/iamcco/markdown-preview.nvim" },
 })
 
 require("mason").setup()
