@@ -7,7 +7,7 @@ vim.filetype.add({
 vim.api.nvim_create_autocmd("FileType", {
 	pattern = "markdown",
 	callback = function()
-		vim.opt_local.signcolumn = "no"
+		vim.opt_local.colorcolumn = ""
 	end,
 })
 
