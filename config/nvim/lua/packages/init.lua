@@ -49,6 +49,11 @@ M.install_all = function()
 
 			if not p:is_installed() then
 				p:install()
+			else
+				local ok, latest = pcall(p.get_latest_version, p)
+				if ok and latest and p:get_installed_version() ~= latest then
+					p:install()
+				end
 			end
 		end
 	end)
