@@ -42,6 +42,13 @@ sudo nixos-rebuild switch --flake .#nixos
 sudo nixos-rebuild switch --flake .#wsl
 ```
 
+**Clipboard support:** Install [win32yank](https://github.com/equalsraf/win32yank) on the Windows side for Neovim system clipboard (`"+y`) to work:
+```powershell
+winget.exe install equalsraf.win32yank
+# or: scoop.exe install win32yank
+# or: choco.exe install win32yank
+```
+
 ## Key Configuration Files
 
 - **flake.nix** — 11 inputs (nixpkgs-unstable, nix-darwin, nixos-wsl, home-manager, etc)
