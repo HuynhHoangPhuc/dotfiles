@@ -5,6 +5,9 @@ MiniFiles.setup({
 			return entry.name ~= ".git"
 		end,
 	},
+	mappings = {
+		close = "<C-c>",
+	},
 })
 
 vim.keymap.set("n", "<leader>e", function()
