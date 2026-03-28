@@ -215,6 +215,15 @@ local function augroup(name)
 	return vim.api.nvim_create_augroup("MiniFiles_" .. name, { clear = true })
 end
 
+-- Add buffer-local keymaps when mini.files creates a buffer
+autocmd("User", {
+	group = augroup("buf_keymaps"),
+	pattern = "MiniFilesBufferCreate",
+	callback = function(args)
+		vim.keymap.set("n", "q", MiniFiles.close, { buffer = args.data.buf_id })
+	end,
+})
+
 -- Load signs when explorer opens
 autocmd("User", {
 	group = augroup("start"),
