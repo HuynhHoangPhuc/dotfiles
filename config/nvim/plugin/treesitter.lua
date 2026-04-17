@@ -1,16 +1,4 @@
 local ensure_installed = {}
-local indent_enabled = {
-	c = true,
-	cpp = true,
-	css = true,
-	html = true,
-	javascript = true,
-	javascriptreact = true,
-	lua = true,
-	typescriptreact = true,
-	typescript = true,
-	tsx = true,
-}
 
 if not os.getenv("DOTFILES_WITH_FLAKE") then
 	ensure_installed = {
@@ -36,24 +24,14 @@ if not ok then
 	return
 end
 
-treesitter.setup({
-	auto_install = false,
-})
-
 if #ensure_installed > 0 then
-	local installed = {}
+	local installed = treesitter.get_installed()
 
-	for _, lang in ipairs(treesitter.get_installed()) do
-		installed[lang] = true
-	end
-
-	local missing = {}
-
-	for _, lang in ipairs(ensure_installed) do
-		if not installed[lang] then
-			table.insert(missing, lang)
-		end
-	end
+	local missing = vim.iter(ensure_installed)
+		:filter(function(lang)
+			return not vim.tbl_contains(installed, lang)
+		end)
+		:totable()
 
 	if #missing > 0 then
 		vim.schedule(function()
@@ -78,7 +56,8 @@ local function is_large_file(buf)
 	return ok_stat and stats and stats.size > max_filesize
 end
 
-local group = vim.api.nvim_create_augroup("dotfiles-treesitter", { clear = true })
+local group =
+	vim.api.nvim_create_augroup("dotfiles-treesitter", { clear = true })
 
 vim.api.nvim_create_autocmd("FileType", {
 	group = group,
@@ -87,12 +66,6 @@ vim.api.nvim_create_autocmd("FileType", {
 			return
 		end
 
-		local started = pcall(vim.treesitter.start, args.buf)
-		local filetype = vim.bo[args.buf].filetype
-
-		if started and indent_enabled[filetype] then
-			vim.bo[args.buf].indentexpr =
-				"v:lua.require'nvim-treesitter'.indentexpr()"
-		end
+		pcall(vim.treesitter.start, args.buf)
 	end,
 })
