@@ -49,6 +49,17 @@ winget.exe install equalsraf.win32yank
 # or: choco.exe install win32yank
 ```
 
+### Standalone Neovim (without the flake)
+
+When `config/nvim/` is used on its own (`DOTFILES_WITH_FLAKE` unset), Neovim
+installs parsers and tools itself instead of getting them from Nix. Two host
+dependencies must be present, or installs fail silently and retry on every start:
+
+```bash
+tree-sitter --version   # required by nvim-treesitter (>= 0.26.1), for parser builds
+dotnet --version        # only needed for csharpier; C# formatting is skipped without it
+```
+
 ## Key Configuration Files
 
 - **flake.nix** — 11 inputs (nixpkgs-unstable, nix-darwin, nixos-wsl, home-manager, etc)
