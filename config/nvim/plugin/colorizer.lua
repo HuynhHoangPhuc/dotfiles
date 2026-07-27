@@ -17,7 +17,7 @@ require("colorizer").setup({
 		},
 		sass = {
 			enable = true,
-			parsers = { "css" },
+			parsers = { css = true },
 		},
 		mode = "virtualtext",
 		virtualtext = "󱓻",
