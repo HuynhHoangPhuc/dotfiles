@@ -3,6 +3,13 @@ local M = {}
 local mason_names = require("packages.names")
 local pkgs = {}
 
+-- Mason installers that shell out to a toolchain Mason does not itself provide.
+-- Requesting one without its runtime fails, and because a failed install never
+-- records a version the package is retried on every startup.
+local install_runtime = {
+	csharpier = "dotnet",
+}
+
 M.get_pkgs = function()
 	local tools = {}
 	local langconfigs = require("languageconfigs")
@@ -21,8 +28,15 @@ M.get_pkgs = function()
 	end
 
 	for _, v in pairs(tools) do
-		if mason_names[v] and not vim.list_contains(pkgs, mason_names[v]) then
-			table.insert(pkgs, mason_names[v])
+		local pkg = mason_names[v]
+		local runtime = pkg and install_runtime[pkg]
+
+		if
+			pkg
+			and not vim.list_contains(pkgs, pkg)
+			and (not runtime or vim.fn.executable(runtime) == 1)
+		then
+			table.insert(pkgs, pkg)
 		end
 	end
 

@@ -25,7 +25,9 @@ if not ok then
 end
 
 if #ensure_installed > 0 then
-	local installed = treesitter.get_installed()
+	-- Without the "parsers" argument this also reports languages that only have
+	-- queries installed, which hides parsers that never compiled.
+	local installed = treesitter.get_installed("parsers")
 
 	local missing = vim.iter(ensure_installed)
 		:filter(function(lang)
@@ -35,14 +37,34 @@ if #ensure_installed > 0 then
 
 	if #missing > 0 then
 		vim.schedule(function()
-			local install_ok = pcall(treesitter.install, missing)
+			local spawn_ok, task = pcall(treesitter.install, missing)
 
-			if not install_ok then
+			if not spawn_ok then
 				vim.notify(
-					"nvim-treesitter parser install failed",
+					"nvim-treesitter parser install failed to start: "
+						.. tostring(task),
 					vim.log.levels.WARN
 				)
+				return
 			end
+
+			-- Compilation runs asynchronously: a failing "tree-sitter build"
+			-- resolves through this callback, not as a pcall error. Reporting it
+			-- here is what keeps a silent failure from reinstalling every startup.
+			task:await(function(err, success)
+				if err or not success then
+					vim.schedule(function()
+						vim.notify(
+							"nvim-treesitter parser install failed: "
+								.. tostring(
+									err
+										or "tree-sitter CLI missing or build error"
+								),
+							vim.log.levels.WARN
+						)
+					end)
+				end
+			end)
 		end)
 	end
 end
