@@ -12,6 +12,7 @@ if not os.getenv("DOTFILES_WITH_FLAKE") then
 		"tsx",
 		"markdown",
 		"markdown_inline",
+		"zig",
 	}
 end
 
