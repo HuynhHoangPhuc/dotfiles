@@ -4,28 +4,31 @@ local function is_windows()
 	return vim.fn.has("win32") == 1
 end
 
--- Append VS LLVM so clang-format/clang-tidy resolve; do not prepend, or
--- Mason clangd would lose to the VS clangd in the same folder.
-local function ensure_vs_llvm_on_path()
-	if not is_windows() then
-		return
-	end
-	local pattern = "C:/Program Files/Microsoft Visual Studio"
-		.. "/*/*/VC/Tools/Llvm/x64/bin"
-	local dirs = vim.fn.glob(pattern, false, true)
-	local dir = dirs[1]
-	if not dir then
-		return
-	end
-	dir = vim.fs.normalize(dir)
+-- VS LLVM 20: indexer is this drop's clangd (matches UBT clang-cl).
+-- Append the bin dir so format/lint resolve; do not prepend.
+local vs_llvm_bin
+if is_windows() then
+	local dirs = vim.fn.glob(
+		"C:/Program Files/Microsoft Visual Studio/*/*/VC/Tools/Llvm/x64/bin",
+		false,
+		true
+	)
+	vs_llvm_bin = dirs[1] and vim.fs.normalize(dirs[1]) or nil
+end
+if vs_llvm_bin then
 	local path = vim.env.PATH or ""
-	if path:lower():find(dir:lower(), 1, true) then
-		return
+	if not path:lower():find(vs_llvm_bin:lower(), 1, true) then
+		vim.env.PATH = path .. ";" .. vs_llvm_bin
 	end
-	vim.env.PATH = path .. ";" .. dir
 end
 
-ensure_vs_llvm_on_path()
+local clangd_exe = "clangd"
+if vs_llvm_bin then
+	local exe = vs_llvm_bin .. "/clangd.exe"
+	if vim.fn.filereadable(exe) == 1 then
+		clangd_exe = exe
+	end
+end
 
 local function normalize_path(path)
 	return vim.fs.normalize(path):gsub("\\", "/"):lower()
@@ -95,7 +98,7 @@ function M.should_run_cpp_tool(path, config_name)
 end
 
 local clangd_cmd = {
-	"clangd",
+	clangd_exe,
 	"--background-index",
 	"--completion-style=detailed",
 	"--function-arg-placeholders",

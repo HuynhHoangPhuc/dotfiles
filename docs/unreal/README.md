@@ -2,7 +2,7 @@
 
 Copy the templates next to the `.uproject`, generate a Compile database, gitignore the generated files. Neovim's Language config does the rest.
 
-On Native Windows, Mason clangd query-drives Visual Studio `clang-cl`. clang-format and clang-tidy are Visual Studio LLVM 20. Do not Mason-install those two. Nix Machines keep Home Manager `clang-tools`; Native Windows is not a Machine.
+On Native Windows, Visual Studio clangd (same LLVM drop as `clang-cl`) indexes and query-drives `clang-cl`. clang-format and clang-tidy are that same LLVM 20. Do not Mason-install those two, and do not strip UBT's `-resource-dir`. Nix Machines keep Home Manager `clang-tools`; Native Windows is not a Machine.
 
 ## Per-project files
 

@@ -138,48 +138,49 @@ assert_eq("c lint name", clang.lint.linters_by_ft.c[1], "clangtidy")
 assert_eq("cpp lint name", clang.lint.linters_by_ft.cpp[1], "clangtidy")
 
 local cmd = table.concat(clang.lsp.servers.clangd.cmd, "\0")
-assert_eq("cmd is clangd", clang.lsp.servers.clangd.cmd[1], "clangd")
+local exe = clang.lsp.servers.clangd.cmd[1]
+assert_eq(
+	"cmd is clangd",
+	exe == "clangd" or exe:find("clangd%.exe$") ~= nil,
+	true
+)
 assert_eq("no --clang-tidy", cmd:find("--clang-tidy", 1, true) ~= nil, false)
 assert_eq("no iwyu", cmd:find("iwyu", 1, true) ~= nil, false)
 assert_eq("setup remains", type(clang.lsp.setup.clangd), "function")
 
 local function load_clang_with_win32(value)
-	local orig_has = vim.fn.has
+	local orig = vim.fn.has
 	vim.fn.has = function(feat)
-		if feat == "win32" then
-			return value
-		end
-		return orig_has(feat)
+		return feat == "win32" and value or orig(feat)
 	end
 	package.loaded["languages.clang"] = nil
 	local ok, loaded = pcall(require, "languages.clang")
-	vim.fn.has = orig_has
+	vim.fn.has = orig
 	package.loaded["languages.clang"] = nil
-	if not ok then
-		error(loaded)
-	end
+	assert(ok, loaded)
 	return loaded
 end
 
-local win = table.concat(load_clang_with_win32(1).lsp.servers.clangd.cmd, "\0")
-local nix = table.concat(load_clang_with_win32(0).lsp.servers.clangd.cmd, "\0")
+local win_cmd = load_clang_with_win32(1).lsp.servers.clangd.cmd
+local nix_cmd = load_clang_with_win32(0).lsp.servers.clangd.cmd
+local win = table.concat(win_cmd, "\0")
 assert_eq("win query-driver", win:find("--query-driver=", 1, true) ~= nil, true)
 assert_eq("win clang-cl", win:find("clang-cl.exe", 1, true) ~= nil, true)
 assert_eq(
+	"Native Windows clangd is VS LLVM",
+	win_cmd[1]:find("clangd.exe", 1, true) ~= nil
+		and win_cmd[1]:lower():find("llvm", 1, true) ~= nil,
+	true
+)
+assert_eq(
 	"nix no query-driver",
-	nix:find("--query-driver=", 1, true) ~= nil,
+	table.concat(nix_cmd, "\0"):find("--query-driver=", 1, true) ~= nil,
 	false
 )
+assert_eq("non-Windows clangd is PATH clangd", nix_cmd[1], "clangd")
 
 vim.env.PATH = orig_path
-for _, dir in ipairs({
-	unreal,
-	engine,
-	other,
-	bare,
-	source_host,
-	plugins_host,
-}) do
+for _, dir in ipairs({ unreal, engine, other, bare, source_host, plugins_host }) do
 	vim.fn.delete(dir, "rf")
 end
 
