@@ -21,8 +21,11 @@
       mini-files
 
       # fzf-lua
-      mini-pick
-      mini-extra
+      # mini-pick
+      # mini-extra
+      plenary-nvim
+      telescope-nvim
+      telescope-ui-select-nvim
 
       # copilot-vim
 

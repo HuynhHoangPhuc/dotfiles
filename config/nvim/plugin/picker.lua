@@ -81,6 +81,7 @@
 -- vim.keymap.set("n", "<leader>gc", "<cmd>FzfLua git_commits<cr>")
 -- vim.keymap.set("n", "<leader>gs", "<cmd>FzfLua git_status<cr>")
 
+--[[
 local MiniPick = require("mini.pick")
 local MiniExtra = require("mini.extra")
 
@@ -234,3 +235,103 @@ vim.keymap.set("n", "<leader>gc", function()
 	MiniExtra.pickers.git_commits()
 end)
 vim.keymap.set("n", "<leader>gs", pick_git_status)
+]]
+
+local telescope = require("telescope")
+local builtin = require("telescope.builtin")
+local actions = require("telescope.actions")
+local action_state = require("telescope.actions.state")
+
+local function visual_selection()
+	return table.concat(
+		vim.fn.getregion(
+			vim.fn.getpos("v"),
+			vim.fn.getpos("."),
+			{ type = vim.fn.mode() }
+		),
+		"\n"
+	)
+end
+
+local function restart_with(picker, extra)
+	return function(prompt_bufnr)
+		local line = action_state.get_current_line()
+		actions.close(prompt_bufnr)
+		picker(vim.tbl_extend("force", extra or {}, { default_text = line }))
+	end
+end
+
+telescope.setup({
+	defaults = {
+		prompt_prefix = " ",
+		mappings = {
+			i = {
+				["<C-q>"] = actions.send_to_qflist + actions.open_qflist,
+				["<C-u>"] = actions.preview_scrolling_up,
+				["<C-d>"] = actions.preview_scrolling_down,
+				["<C-b>"] = actions.preview_scrolling_up,
+				["<C-f>"] = actions.preview_scrolling_down,
+			},
+			n = {
+				["<C-q>"] = actions.send_to_qflist + actions.open_qflist,
+			},
+		},
+	},
+	pickers = {
+		find_files = {
+			mappings = {
+				i = {
+					["<M-h>"] = restart_with(builtin.find_files, { hidden = true }),
+					["<M-i>"] = restart_with(
+						builtin.find_files,
+						{ no_ignore = true }
+					),
+				},
+			},
+		},
+		live_grep = {
+			mappings = {
+				i = {
+					["<M-h>"] = restart_with(
+						builtin.live_grep,
+						{ additional_args = { "--hidden" } }
+					),
+					["<M-i>"] = restart_with(
+						builtin.live_grep,
+						{ additional_args = { "--no-ignore" } }
+					),
+				},
+			},
+		},
+		buffers = {
+			sort_mru = true,
+			sort_lastused = true,
+		},
+	},
+	extensions = {
+		["ui-select"] = require("telescope.themes").get_dropdown({
+			layout_config = { width = 0.5 },
+		}),
+	},
+})
+
+pcall(telescope.load_extension, "ui-select")
+
+vim.keymap.set("n", "<C-p>", builtin.find_files)
+vim.keymap.set("n", "<C-S-p>", builtin.git_files)
+vim.keymap.set("n", "<C-\\>", function()
+	builtin.buffers({ sort_mru = true, sort_lastused = true })
+end)
+vim.keymap.set("n", "<C-g>", builtin.live_grep)
+vim.keymap.set("n", "<C-f>", function()
+	builtin.grep_string({ word_match = "-w" })
+end)
+vim.keymap.set("n", "<C-S-f>", function()
+	builtin.grep_string({ search = vim.fn.expand("<cWORD>") })
+end)
+vim.keymap.set("x", "<C-f>", function()
+	builtin.grep_string({ search = visual_selection() })
+end)
+vim.keymap.set("n", "<leader>sb", builtin.current_buffer_fuzzy_find)
+vim.keymap.set("n", "<leader>gc", builtin.git_commits)
+vim.keymap.set("n", "<leader>gs", builtin.git_status)
