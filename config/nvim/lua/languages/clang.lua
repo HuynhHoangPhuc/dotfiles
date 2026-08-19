@@ -1,20 +1,119 @@
 local M = {}
 
+local function is_windows()
+	return vim.fn.has("win32") == 1
+end
+
+-- Append VS LLVM so clang-format/clang-tidy resolve; do not prepend, or
+-- Mason clangd would lose to the VS clangd in the same folder.
+local function ensure_vs_llvm_on_path()
+	if not is_windows() then
+		return
+	end
+	local pattern = "C:/Program Files/Microsoft Visual Studio"
+		.. "/*/*/VC/Tools/Llvm/x64/bin"
+	local dirs = vim.fn.glob(pattern, false, true)
+	local dir = dirs[1]
+	if not dir then
+		return
+	end
+	dir = vim.fs.normalize(dir)
+	local path = vim.env.PATH or ""
+	if path:lower():find(dir:lower(), 1, true) then
+		return
+	end
+	vim.env.PATH = path .. ";" .. dir
+end
+
+ensure_vs_llvm_on_path()
+
+local function normalize_path(path)
+	return vim.fs.normalize(path):gsub("\\", "/"):lower()
+end
+
+local function ancestor_file(path, name)
+	local dir = vim.fs.dirname(vim.fs.normalize(path))
+	return vim.fs.find(name, {
+		upward = true,
+		path = dir,
+		type = "file",
+	})[1]
+end
+
+local function ancestor_uproject(path)
+	local dir = vim.fs.dirname(vim.fs.normalize(path))
+	return vim.fs.find(function(name)
+		return name:lower():sub(-9) == ".uproject"
+	end, { upward = true, path = dir, type = "file" })[1]
+end
+
+-- Non-Unreal trees: run if the Style file / Check set exists.
+-- Unreal: project Source/ only, or a Plugins/ tree that owns the config.
+-- Never Engine, Intermediate, Saved, ThirdParty. Vendor plugin Source/
+-- is still Plugins/, so a project-root Style file does not opt it in.
+function M.should_run_cpp_tool(path, config_name)
+	if not path or path == "" then
+		return false
+	end
+	local normalized = normalize_path(path)
+	if
+		normalized:find("/intermediate/", 1, true)
+		or normalized:find("/saved/", 1, true)
+		or normalized:find("/thirdparty/", 1, true)
+		or normalized:find("/third_party/", 1, true)
+		or normalized:find("/engine/source/", 1, true)
+	then
+		return false
+	end
+
+	local config = ancestor_file(path, config_name)
+	if not config then
+		return false
+	end
+
+	local uproject = ancestor_uproject(path)
+	if not uproject then
+		return true
+	end
+
+	local project_root = normalize_path(vim.fs.dirname(uproject))
+	local prefix = project_root .. "/"
+	if not vim.startswith(normalized, prefix) then
+		return false
+	end
+	local rel = normalized:sub(#prefix + 1)
+
+	local plugin = rel:match("^plugins/([^/]+)/")
+	if plugin then
+		return vim.startswith(
+			normalize_path(config),
+			prefix .. "plugins/" .. plugin .. "/"
+		)
+	end
+
+	return vim.startswith(rel, "source/")
+end
+
+local clangd_cmd = {
+	"clangd",
+	"--background-index",
+	"--completion-style=detailed",
+	"--function-arg-placeholders",
+	"--fallback-style=llvm",
+}
+
+if is_windows() then
+	clangd_cmd[#clangd_cmd + 1] = "--query-driver="
+		.. "C:/Program Files/Microsoft Visual Studio/**/clang-cl.exe"
+end
+
 M.lsp = {
 	servers = {
 		clangd = {
 			capabilities = {
 				offsetEncoding = { "utf-16" },
 			},
-			cmd = {
-				"clangd",
-				"--background-index",
-				"--clang-tidy",
-				"--header-insertion=iwyu",
-				"--completion-style=detailed",
-				"--function-arg-placeholders",
-				"--fallback-style=llvm",
-			},
+			cmd = clangd_cmd,
 			init_options = {
 				usePlaceholders = true,
 				completeUnimported = true,
@@ -61,6 +160,34 @@ M.lsp = {
 				end,
 			})
 		end,
+	},
+}
+
+M.format = {
+	formatters_by_ft = {
+		c = { "clang_format" },
+		cpp = { "clang_format" },
+	},
+	formatters = {
+		clang_format = {
+			condition = function(_, ctx)
+				return M.should_run_cpp_tool(ctx.filename, ".clang-format")
+			end,
+		},
+	},
+}
+
+M.lint = {
+	linters_by_ft = {
+		c = { "clangtidy" },
+		cpp = { "clangtidy" },
+	},
+	linters = {
+		clangtidy = {
+			condition = function(ctx)
+				return M.should_run_cpp_tool(ctx.filename, ".clang-tidy")
+			end,
+		},
 	},
 }
 
