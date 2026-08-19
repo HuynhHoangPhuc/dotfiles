@@ -20,7 +20,9 @@
       nvim-tree-lua
       mini-files
 
-      fzf-lua
+      # fzf-lua
+      mini-pick
+      mini-extra
 
       # copilot-vim
 

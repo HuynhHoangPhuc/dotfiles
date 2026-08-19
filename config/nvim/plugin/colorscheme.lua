@@ -1,7 +1,8 @@
 require("catppuccin").setup({
   integrations = {
-    fzf = true,
-    mini = { enable = true },
+    -- fzf = true,
+    -- MiniPick*, MiniFiles*, and the rest of mini.nvim
+    mini = { enabled = true },
     -- copilot_vim = true,
   },
   styles = {

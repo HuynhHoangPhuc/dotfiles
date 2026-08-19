@@ -12,23 +12,33 @@ local function on_attach(client, bufnr)
 	end
 	local methods = vim.lsp.protocol.Methods
 
-	map(
-		"gra",
-		"<cmd>FzfLua lsp_code_actions<cr>",
-		"vim.lsp.buf.code_action()",
-		{ "n", "x" }
-	)
-	map("grr", "<cmd>FzfLua lsp_references<cr>", "vim.lsp.buf.references()")
-	map(
-		"gri",
-		"<cmd>FzfLua lsp_implementations<cr>",
-		"vim.lsp.buf.implementation()"
-	)
-	map(
-		"gO",
-		"<cmd>FzfLua lsp_document_symbols<cr>",
-		"vim.lsp.buf.document_symbol()"
-	)
+	-- map(
+	-- 	"gra",
+	-- 	"<cmd>FzfLua lsp_code_actions<cr>",
+	-- 	"vim.lsp.buf.code_action()",
+	-- 	{ "n", "x" }
+	-- )
+	-- map("grr", "<cmd>FzfLua lsp_references<cr>", "vim.lsp.buf.references()")
+	-- map(
+	-- 	"gri",
+	-- 	"<cmd>FzfLua lsp_implementations<cr>",
+	-- 	"vim.lsp.buf.implementation()"
+	-- )
+	-- map(
+	-- 	"gO",
+	-- 	"<cmd>FzfLua lsp_document_symbols<cr>",
+	-- 	"vim.lsp.buf.document_symbol()"
+	-- )
+	map("gra", vim.lsp.buf.code_action, "vim.lsp.buf.code_action()", { "n", "x" })
+	map("grr", function()
+		require("mini.extra").pickers.lsp({ scope = "references" })
+	end, "vim.lsp.buf.references()")
+	map("gri", function()
+		require("mini.extra").pickers.lsp({ scope = "implementation" })
+	end, "vim.lsp.buf.implementation()")
+	map("gO", function()
+		require("mini.extra").pickers.lsp({ scope = "document_symbol" })
+	end, "vim.lsp.buf.document_symbol()")
 
 	map("[e", function()
 		vim.diagnostic.jump({
@@ -45,10 +55,13 @@ local function on_attach(client, bufnr)
 
 	if client:supports_method(methods.textDocument_definition) then
 		map("gd", function()
-			require("fzf-lua").lsp_definitions({ jump1 = true })
+			-- require("fzf-lua").lsp_definitions({ jump1 = true })
+			-- mini.extra jumps when there is a single location
+			require("mini.extra").pickers.lsp({ scope = "definition" })
 		end, "Go to definition")
 		map("gD", function()
-			require("fzf-lua").lsp_definitions({ jump1 = false })
+			-- require("fzf-lua").lsp_definitions({ jump1 = false })
+			require("mini.extra").pickers.lsp({ scope = "definition" })
 		end, "Peek definition")
 	end
 
