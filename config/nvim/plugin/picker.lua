@@ -81,7 +81,6 @@
 -- vim.keymap.set("n", "<leader>gc", "<cmd>FzfLua git_commits<cr>")
 -- vim.keymap.set("n", "<leader>gs", "<cmd>FzfLua git_status<cr>")
 
---[[
 local MiniPick = require("mini.pick")
 local MiniExtra = require("mini.extra")
 
@@ -235,8 +234,8 @@ vim.keymap.set("n", "<leader>gc", function()
 	MiniExtra.pickers.git_commits()
 end)
 vim.keymap.set("n", "<leader>gs", pick_git_status)
-]]
 
+--[[
 local telescope = require("telescope")
 local builtin = require("telescope.builtin")
 local actions = require("telescope.actions")
@@ -335,3 +334,4 @@ end)
 vim.keymap.set("n", "<leader>sb", builtin.current_buffer_fuzzy_find)
 vim.keymap.set("n", "<leader>gc", builtin.git_commits)
 vim.keymap.set("n", "<leader>gs", builtin.git_status)
+]]

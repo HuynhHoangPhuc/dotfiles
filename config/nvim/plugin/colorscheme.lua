@@ -3,7 +3,7 @@ require("catppuccin").setup({
     -- fzf = true,
     -- MiniPick*, MiniFiles*, and the rest of mini.nvim
     mini = { enabled = true },
-    telescope = { enabled = true },
+    -- telescope = { enabled = true },
     -- copilot_vim = true,
   },
   styles = {
