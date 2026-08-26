@@ -152,6 +152,7 @@ return {
 	ruff = "ruff",
 	ruff_lsp = "ruff-lsp",
 	rust_analyzer = "rust-analyzer",
+  bacon_ls = "bacon-ls",
 	salt_ls = "salt-lsp",
 	serve_d = "serve-d",
 	shopify_theme_ls = "shopify-cli",

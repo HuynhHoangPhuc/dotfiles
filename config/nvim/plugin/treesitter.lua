@@ -13,6 +13,8 @@ if not os.getenv("DOTFILES_WITH_FLAKE") then
 		"markdown",
 		"markdown_inline",
 		"zig",
+    "rust",
+    "ron",
 	}
 end
 
