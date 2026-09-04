@@ -6,4 +6,10 @@ M.lsp = {
 	},
 }
 
+M.format = {
+	formatters_by_ft = {
+		zig = { "zigfmt" },
+	},
+}
+
 return M
