@@ -86,9 +86,7 @@ local MiniExtra = require("mini.extra")
 
 local function choose_all_to_qf()
 	local matches = MiniPick.get_picker_matches()
-	if matches == nil or matches.all == nil or #matches.all == 0 then
-		return true
-	end
+	if matches == nil or matches.all == nil or #matches.all == 0 then return true end
 	MiniPick.default_choose_marked(matches.all)
 	return true
 end
@@ -144,11 +142,7 @@ end
 
 local function visual_selection()
 	return table.concat(
-		vim.fn.getregion(
-			vim.fn.getpos("v"),
-			vim.fn.getpos("."),
-			{ type = vim.fn.mode() }
-		),
+		vim.fn.getregion(vim.fn.getpos("v"), vim.fn.getpos("."), { type = vim.fn.mode() }),
 		"\n"
 	)
 end
@@ -160,8 +154,7 @@ local function pick_git_status()
 			local items = {}
 			for _, line in ipairs(lines) do
 				if line ~= "" then
-					local path = line:match("->%s+(.+)$")
-						or line:match("^..%s+(.*)$")
+					local path = line:match("->%s+(.+)$") or line:match("^..%s+(.*)$")
 					table.insert(items, { text = line, path = path or line })
 				end
 			end

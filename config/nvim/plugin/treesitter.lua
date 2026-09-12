@@ -13,8 +13,8 @@ if not os.getenv("DOTFILES_WITH_FLAKE") then
 		"markdown",
 		"markdown_inline",
 		"zig",
-    "rust",
-    "ron",
+		"rust",
+		"ron",
 	}
 end
 
@@ -44,8 +44,7 @@ if #ensure_installed > 0 then
 
 			if not spawn_ok then
 				vim.notify(
-					"nvim-treesitter parser install failed to start: "
-						.. tostring(task),
+					"nvim-treesitter parser install failed to start: " .. tostring(task),
 					vim.log.levels.WARN
 				)
 				return
@@ -59,10 +58,7 @@ if #ensure_installed > 0 then
 					vim.schedule(function()
 						vim.notify(
 							"nvim-treesitter parser install failed: "
-								.. tostring(
-									err
-										or "tree-sitter CLI missing or build error"
-								),
+								.. tostring(err or "tree-sitter CLI missing or build error"),
 							vim.log.levels.WARN
 						)
 					end)
@@ -81,15 +77,12 @@ local function is_large_file(buf)
 	return ok_stat and stats and stats.size > max_filesize
 end
 
-local group =
-	vim.api.nvim_create_augroup("dotfiles-treesitter", { clear = true })
+local group = vim.api.nvim_create_augroup("dotfiles-treesitter", { clear = true })
 
 vim.api.nvim_create_autocmd("FileType", {
 	group = group,
 	callback = function(args)
-		if is_large_file(args.buf) then
-			return
-		end
+		if is_large_file(args.buf) then return end
 
 		pcall(vim.treesitter.start, args.buf)
 	end,

@@ -72,14 +72,10 @@ M.format = {
 	format_on_save = function()
 		-- Don't format when minifiles is open, since that triggers the "confirm without
 		-- synchronization" message.
-		if vim.g.minifiles_active then
-			return nil
-		end
+		if vim.g.minifiles_active then return nil end
 
 		-- Stop if we disabled auto-formatting.
-		if not vim.g.autoformat then
-			return nil
-		end
+		if not vim.g.autoformat then return nil end
 
 		return {}
 	end,
@@ -97,23 +93,16 @@ if
 	type(M.lsp.diagnostics.virtual_text) == "table"
 	and M.lsp.diagnostics.virtual_text.prefix == "icons"
 then
-	M.lsp.diagnostics.virtual_text.prefix = vim.fn.has("nvim-0.10.0") == 0
-			and ""
+	M.lsp.diagnostics.virtual_text.prefix = vim.fn.has("nvim-0.10.0") == 0 and ""
 		or function(diagnostic)
 			local diagnostic_icons = icons.diagnostics
 			for d, icon in pairs(diagnostic_icons) do
-				if
-					diagnostic.severity == vim.diagnostic.severity[d:upper()]
-				then
-					return icon
-				end
+				if diagnostic.severity == vim.diagnostic.severity[d:upper()] then return icon end
 			end
 		end
 end
 
-local language_configs = vim.iter(
-	vim.api.nvim_get_runtime_file("lua/languages/*.lua", true)
-)
+local language_configs = vim.iter(vim.api.nvim_get_runtime_file("lua/languages/*.lua", true))
 	:map(function(file)
 		return vim.fn.fnamemodify(file, ":t:r")
 	end)
@@ -121,25 +110,17 @@ local language_configs = vim.iter(
 for _, language in pairs(language_configs) do
 	local config = require("languages." .. language)
 	if config.enabled == nil or config.enabled == true then
-		M.lsp.servers = vim.tbl_deep_extend(
-			"force",
-			M.lsp.servers,
-			(config.lsp and config.lsp.servers) or {}
-		)
+		M.lsp.servers =
+			vim.tbl_deep_extend("force", M.lsp.servers, (config.lsp and config.lsp.servers) or {})
 
-		M.lsp.setup = vim.tbl_deep_extend(
-			"force",
-			M.lsp.setup,
-			(config.lsp and config.lsp.setup) or {}
-		)
+		M.lsp.setup =
+			vim.tbl_deep_extend("force", M.lsp.setup, (config.lsp and config.lsp.setup) or {})
 
 		M.format = vim.tbl_deep_extend("force", M.format, config.format or {})
 
 		M.lint = vim.tbl_deep_extend("force", M.lint, config.lint or {})
 
-		if config.dap then
-			M.dap[#M.dap + 1] = config.dap
-		end
+		if config.dap then M.dap[#M.dap + 1] = config.dap end
 	end
 end
 

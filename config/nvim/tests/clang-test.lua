@@ -129,21 +129,13 @@ assert_eq("format denies vendor", fmt_ok(nil, { filename = vendor }), false)
 assert_eq("lint uses policy", lint_ok({ filename = source }), true)
 assert_eq("lint denies vendor", lint_ok({ filename = vendor }), false)
 assert_eq("c format name", clang.format.formatters_by_ft.c[1], "clang_format")
-assert_eq(
-	"cpp format name",
-	clang.format.formatters_by_ft.cpp[1],
-	"clang_format"
-)
+assert_eq("cpp format name", clang.format.formatters_by_ft.cpp[1], "clang_format")
 assert_eq("c lint name", clang.lint.linters_by_ft.c[1], "clangtidy")
 assert_eq("cpp lint name", clang.lint.linters_by_ft.cpp[1], "clangtidy")
 
 local cmd = table.concat(clang.lsp.servers.clangd.cmd, "\0")
 local exe = clang.lsp.servers.clangd.cmd[1]
-assert_eq(
-	"cmd is clangd",
-	exe == "clangd" or exe:find("clangd%.exe$") ~= nil,
-	true
-)
+assert_eq("cmd is clangd", exe == "clangd" or exe:find("clangd%.exe$") ~= nil, true)
 assert_eq("no --clang-tidy", cmd:find("--clang-tidy", 1, true) ~= nil, false)
 assert_eq("no iwyu", cmd:find("iwyu", 1, true) ~= nil, false)
 assert_eq("setup remains", type(clang.lsp.setup.clangd), "function")

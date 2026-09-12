@@ -3,12 +3,7 @@ local configs = require("languageconfigs")
 local function on_attach(client, bufnr)
 	local map = function(keys, func, desc, mode)
 		mode = mode or "n"
-		vim.keymap.set(
-			mode,
-			keys,
-			func,
-			{ buffer = bufnr, desc = "LSP: " .. desc }
-		)
+		vim.keymap.set(mode, keys, func, { buffer = bufnr, desc = "LSP: " .. desc })
 	end
 	local methods = vim.lsp.protocol.Methods
 
@@ -77,42 +72,32 @@ local function on_attach(client, bufnr)
 	end
 
 	if client:supports_method(methods.textDocument_documentHighlight) then
-		local under_cursor_highlights_group = vim.api.nvim_create_augroup(
-			"mariasolos/cursor_highlights",
-			{ clear = false }
-		)
+		local under_cursor_highlights_group =
+			vim.api.nvim_create_augroup("mariasolos/cursor_highlights", { clear = false })
 		vim.api.nvim_create_autocmd({ "CursorHold", "InsertLeave" }, {
 			group = under_cursor_highlights_group,
 			desc = "Highlight references under the cursor",
 			buffer = bufnr,
 			callback = vim.lsp.buf.document_highlight,
 		})
-		vim.api.nvim_create_autocmd(
-			{ "CursorMoved", "InsertEnter", "BufLeave" },
-			{
-				group = under_cursor_highlights_group,
-				desc = "Clear highlight references",
-				buffer = bufnr,
-				callback = vim.lsp.buf.clear_references,
-			}
-		)
+		vim.api.nvim_create_autocmd({ "CursorMoved", "InsertEnter", "BufLeave" }, {
+			group = under_cursor_highlights_group,
+			desc = "Clear highlight references",
+			buffer = bufnr,
+			callback = vim.lsp.buf.clear_references,
+		})
 	end
 
 	if client:supports_method(methods.textDocument_inlayHint) then
-		local inlay_hints_group = vim.api.nvim_create_augroup(
-			"mariasolos/toggle_inlay_hints",
-			{ clear = false }
-		)
+		local inlay_hints_group =
+			vim.api.nvim_create_augroup("mariasolos/toggle_inlay_hints", { clear = false })
 
 		if vim.g.inlay_hints then
 			-- Initial inlay hint display.
 			-- Idk why but without the delay inlay hints aren't displayed at the very start.
 			vim.defer_fn(function()
 				local mode = vim.api.nvim_get_mode().mode
-				vim.lsp.inlay_hint.enable(
-					mode == "n" or mode == "v",
-					{ bufnr = bufnr }
-				)
+				vim.lsp.inlay_hint.enable(mode == "n" or mode == "v", { bufnr = bufnr })
 			end, 500)
 		end
 
@@ -121,9 +106,7 @@ local function on_attach(client, bufnr)
 			desc = "Enable inlay hints",
 			buffer = bufnr,
 			callback = function()
-				if vim.g.inlay_hints then
-					vim.lsp.inlay_hint.enable(false, { bufnr = bufnr })
-				end
+				if vim.g.inlay_hints then vim.lsp.inlay_hint.enable(false, { bufnr = bufnr }) end
 			end,
 		})
 
@@ -132,9 +115,7 @@ local function on_attach(client, bufnr)
 			desc = "Disable inlay hints",
 			buffer = bufnr,
 			callback = function()
-				if vim.g.inlay_hints then
-					vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
-				end
+				if vim.g.inlay_hints then vim.lsp.inlay_hint.enable(true, { bufnr = bufnr }) end
 			end,
 		})
 	end
@@ -143,9 +124,7 @@ end
 vim.api.nvim_create_autocmd("LspAttach", {
 	callback = function(args)
 		local client = vim.lsp.get_client_by_id(args.data.client_id)
-		if not client then
-			return
-		end
+		if not client then return end
 
 		on_attach(client, args.buf)
 	end,
@@ -153,14 +132,11 @@ vim.api.nvim_create_autocmd("LspAttach", {
 
 vim.diagnostic.config(vim.deepcopy(configs.lsp.diagnostics))
 
-local capabilities =
-	require("blink.cmp").get_lsp_capabilities(configs.lsp.capabilities, true)
+local capabilities = require("blink.cmp").get_lsp_capabilities(configs.lsp.capabilities, true)
 vim.lsp.config("*", { capabilities = capabilities })
 
 for server, config in pairs(configs.lsp.servers) do
-	if configs.lsp.setup[server] then
-		configs.lsp.setup[server](server, config)
-	end
+	if configs.lsp.setup[server] then configs.lsp.setup[server](server, config) end
 
 	vim.lsp.config(server, config)
 	vim.lsp.enable(server)

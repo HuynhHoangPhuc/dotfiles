@@ -54,18 +54,11 @@ M.lsp = {
 			vim.api.nvim_create_autocmd("LspAttach", {
 				callback = function(args)
 					local client = vim.lsp.get_client_by_id(args.data.client_id)
-					if not client or client.name ~= "gopls" then
-						return
-					end
+					if not client or client.name ~= "gopls" then return end
 
-					if
-						not client.server_capabilities.semanticTokensProvider
-					then
-						local semantic =
-							client.config.capabilities.textDocument.semanticTokens
-						if not semantic then
-							return
-						end
+					if not client.server_capabilities.semanticTokensProvider then
+						local semantic = client.config.capabilities.textDocument.semanticTokens
+						if not semantic then return end
 						client.server_capabilities.semanticTokensProvider = {
 							full = true,
 							legend = {

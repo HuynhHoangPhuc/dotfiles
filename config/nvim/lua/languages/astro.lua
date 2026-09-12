@@ -5,9 +5,7 @@ local function extend(t, key, values)
 	for i = 1, #keys do
 		local k = keys[i]
 		t[k] = t[k] or {}
-		if type(t) ~= "table" then
-			return
-		end
+		if type(t) ~= "table" then return end
 		t = t[k]
 	end
 	return vim.list_extend(t, values)
@@ -46,19 +44,12 @@ M.lint = {
 	},
 }
 
-extend(
-	require("languages.typescript").lsp.servers.vtsls,
-	"settings.vtsls.tsserver.globalPlugins",
+extend(require("languages.typescript").lsp.servers.vtsls, "settings.vtsls.tsserver.globalPlugins", {
 	{
-		{
-			name = "@astrojs/ts-plugin",
-			location = get_pkg_path(
-				"astro-language-server",
-				"/node_modules/@astrojs/ts-plugin"
-			),
-			enableForWorkspaceTypeScriptVersions = true,
-		},
-	}
-)
+		name = "@astrojs/ts-plugin",
+		location = get_pkg_path("astro-language-server", "/node_modules/@astrojs/ts-plugin"),
+		enableForWorkspaceTypeScriptVersions = true,
+	},
+})
 
 return M

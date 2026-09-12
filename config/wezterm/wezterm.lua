@@ -7,15 +7,15 @@ local config = wezterm.config_builder()
 -- =============================================================================
 config.color_scheme = "Catppuccin Mocha"
 config.colors = {
-  background = "#000000",
-  tab_bar = {
-    background = "#000000",
-    active_tab = { bg_color = "#1e1e2e", fg_color = "#cdd6f4" },
-    inactive_tab = { bg_color = "#000000", fg_color = "#585b70" },
-    inactive_tab_hover = { bg_color = "#181825", fg_color = "#cdd6f4" },
-    new_tab = { bg_color = "#000000", fg_color = "#585b70" },
-    new_tab_hover = { bg_color = "#181825", fg_color = "#cdd6f4" },
-  },
+	background = "#000000",
+	tab_bar = {
+		background = "#000000",
+		active_tab = { bg_color = "#1e1e2e", fg_color = "#cdd6f4" },
+		inactive_tab = { bg_color = "#000000", fg_color = "#585b70" },
+		inactive_tab_hover = { bg_color = "#181825", fg_color = "#cdd6f4" },
+		new_tab = { bg_color = "#000000", fg_color = "#585b70" },
+		new_tab_hover = { bg_color = "#181825", fg_color = "#cdd6f4" },
+	},
 }
 
 -- =============================================================================
@@ -54,23 +54,31 @@ config.tab_bar_at_bottom = false
 -- Keybindings: vim-style pane navigation + tab management
 -- =============================================================================
 config.keys = {
-  -- Pane splitting
-  { key = "d", mods = "CTRL|SHIFT", action = act.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
-  { key = "e", mods = "CTRL|SHIFT", action = act.SplitVertical({ domain = "CurrentPaneDomain" }) },
+	-- Pane splitting
+	{
+		key = "d",
+		mods = "CTRL|SHIFT",
+		action = act.SplitHorizontal({ domain = "CurrentPaneDomain" }),
+	},
+	{
+		key = "e",
+		mods = "CTRL|SHIFT",
+		action = act.SplitVertical({ domain = "CurrentPaneDomain" }),
+	},
 
-  -- Pane navigation (vim-style)
-  { key = "h", mods = "CTRL|SHIFT", action = act.ActivatePaneDirection("Left") },
-  { key = "j", mods = "CTRL|SHIFT", action = act.ActivatePaneDirection("Down") },
-  { key = "k", mods = "CTRL|SHIFT", action = act.ActivatePaneDirection("Up") },
-  { key = "l", mods = "CTRL|SHIFT", action = act.ActivatePaneDirection("Right") },
+	-- Pane navigation (vim-style)
+	{ key = "h", mods = "CTRL|SHIFT", action = act.ActivatePaneDirection("Left") },
+	{ key = "j", mods = "CTRL|SHIFT", action = act.ActivatePaneDirection("Down") },
+	{ key = "k", mods = "CTRL|SHIFT", action = act.ActivatePaneDirection("Up") },
+	{ key = "l", mods = "CTRL|SHIFT", action = act.ActivatePaneDirection("Right") },
 
-  -- Pane close
-  { key = "w", mods = "CTRL|SHIFT", action = act.CloseCurrentPane({ confirm = false }) },
+	-- Pane close
+	{ key = "w", mods = "CTRL|SHIFT", action = act.CloseCurrentPane({ confirm = false }) },
 
-  -- Tab management
-  { key = "t", mods = "CTRL|SHIFT", action = act.SpawnTab("CurrentPaneDomain") },
-  { key = "[", mods = "CTRL|SHIFT", action = act.ActivateTabRelative(-1) },
-  { key = "]", mods = "CTRL|SHIFT", action = act.ActivateTabRelative(1) },
+	-- Tab management
+	{ key = "t", mods = "CTRL|SHIFT", action = act.SpawnTab("CurrentPaneDomain") },
+	{ key = "[", mods = "CTRL|SHIFT", action = act.ActivateTabRelative(-1) },
+	{ key = "]", mods = "CTRL|SHIFT", action = act.ActivateTabRelative(1) },
 }
 
 return config

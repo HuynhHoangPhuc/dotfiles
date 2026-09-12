@@ -38,9 +38,7 @@ function M.lint()
 	names = vim.list_extend({}, names)
 
 	-- Add fallback linters.
-	if #names == 0 then
-		vim.list_extend(names, lint.linters_by_ft["_"] or {})
-	end
+	if #names == 0 then vim.list_extend(names, lint.linters_by_ft["_"] or {}) end
 
 	-- Add global linters.
 	vim.list_extend(names, lint.linters_by_ft["*"] or {})
@@ -55,17 +53,11 @@ function M.lint()
 			print("Linter not found: " .. name)
 		end
 		return linter
-			and not (
-				type(linter) == "table"
-				and linter.condition
-				and not linter.condition(ctx)
-			)
+			and not (type(linter) == "table" and linter.condition and not linter.condition(ctx))
 	end, names)
 
 	-- Run linters.
-	if #names > 0 then
-		lint.try_lint(names)
-	end
+	if #names > 0 then lint.try_lint(names) end
 end
 
 vim.api.nvim_create_autocmd(require("languageconfigs").lint.events, {

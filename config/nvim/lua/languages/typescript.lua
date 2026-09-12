@@ -11,12 +11,7 @@ local function execute(opts)
 			params = params,
 		})
 	else
-		return vim.lsp.buf_request(
-			0,
-			"workspace/executeCommand",
-			params,
-			opts.handler
-		)
+		return vim.lsp.buf_request(0, "workspace/executeCommand", params, opts.handler)
 	end
 end
 
@@ -81,8 +76,7 @@ M.lsp = {
 				},
 				callback = function(args)
 					vim.keymap.set("n", "grD", function()
-						local params =
-							vim.lsp.util.make_position_params(0, "utf-8")
+						local params = vim.lsp.util.make_position_params(0, "utf-8")
 						execute({
 							command = "typescript.goToSourceDefinition",
 							arguments = {
@@ -105,9 +99,7 @@ M.lsp = {
 					end, { buffer = args.buf, desc = "File References" })
 
 					local client = vim.lsp.get_client_by_id(args.data.client_id)
-					if not client or client.name ~= "vtsls" then
-						return
-					end
+					if not client or client.name ~= "vtsls" then return end
 
 					-- client.commands["_typescript.moveToFileRefactoring"] = function(
 					-- 	command,

@@ -25,9 +25,7 @@ end
 local clangd_exe = "clangd"
 if vs_llvm_bin then
 	local exe = vs_llvm_bin .. "/clangd.exe"
-	if vim.fn.filereadable(exe) == 1 then
-		clangd_exe = exe
-	end
+	if vim.fn.filereadable(exe) == 1 then clangd_exe = exe end
 end
 
 local function normalize_path(path)
@@ -55,9 +53,7 @@ end
 -- Never Engine, Intermediate, Saved, ThirdParty. Vendor plugin Source/
 -- is still Plugins/, so a project-root Style file does not opt it in.
 function M.should_run_cpp_tool(path, config_name)
-	if not path or path == "" then
-		return false
-	end
+	if not path or path == "" then return false end
 	local normalized = normalize_path(path)
 	if
 		normalized:find("/intermediate/", 1, true)
@@ -70,28 +66,19 @@ function M.should_run_cpp_tool(path, config_name)
 	end
 
 	local config = ancestor_file(path, config_name)
-	if not config then
-		return false
-	end
+	if not config then return false end
 
 	local uproject = ancestor_uproject(path)
-	if not uproject then
-		return true
-	end
+	if not uproject then return true end
 
 	local project_root = normalize_path(vim.fs.dirname(uproject))
 	local prefix = project_root .. "/"
-	if not vim.startswith(normalized, prefix) then
-		return false
-	end
+	if not vim.startswith(normalized, prefix) then return false end
 	local rel = normalized:sub(#prefix + 1)
 
 	local plugin = rel:match("^plugins/([^/]+)/")
 	if plugin then
-		return vim.startswith(
-			normalize_path(config),
-			prefix .. "plugins/" .. plugin .. "/"
-		)
+		return vim.startswith(normalize_path(config), prefix .. "plugins/" .. plugin .. "/")
 	end
 
 	return vim.startswith(rel, "source/")
