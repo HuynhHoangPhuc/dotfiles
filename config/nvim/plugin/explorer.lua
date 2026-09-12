@@ -1,12 +1,11 @@
-local _, MiniFiles = pcall(require, "mini.files")
+local ok, MiniFiles = pcall(require, "mini.files")
+if not ok then return end
+
 MiniFiles.setup({
 	content = {
 		filter = function(entry)
 			return entry.name ~= ".git"
 		end,
-	},
-	mappings = {
-		close = "<C-c>",
 	},
 })
 
@@ -23,14 +22,10 @@ local nsMiniFiles = vim.api.nvim_create_namespace("mini_files_git")
 local autocmd = vim.api.nvim_create_autocmd
 local uv = vim.uv or vim.loop
 
--- Separate caches with different TTLs:
--- git status changes frequently, ignored files rarely change
-local cache = {
-	status  = {},  -- [dir] = { time, map }   TTL: 10s
-	ignored = {},  -- [dir] = { time, map }   TTL: 60s
-}
-local STATUS_TTL  = 10   -- seconds
-local IGNORED_TTL = 60   -- seconds
+-- [dir] = { time, map }. Never cleared on close so reopening is instant;
+-- expiry is by TTL, plus explicit invalidation after file actions/writes.
+local cache = {}
+local CACHE_TTL = 10 -- seconds
 
 local function isSymlink(path)
 	local stat = uv.fs_lstat(path)
@@ -41,28 +36,64 @@ end
 local symbolMap = {
 	-- stylua: ignore start
 	[" M"] = { symbol = "•",  hlGroup = "MiniDiffSignChange" }, -- modified in working dir
+	[" D"] = { symbol = "-",  hlGroup = "MiniDiffSignDelete" }, -- deleted in working dir
+	[" T"] = { symbol = "~",  hlGroup = "MiniDiffSignChange" }, -- typechange in working dir
 	["M "] = { symbol = "✹",  hlGroup = "MiniDiffSignChange" }, -- modified in index
 	["MM"] = { symbol = "≠",  hlGroup = "MiniDiffSignChange" }, -- modified in both
+	["MD"] = { symbol = "✗",  hlGroup = "MiniDiffSignDelete" }, -- modified in index, deleted in worktree
 	["A "] = { symbol = "+",  hlGroup = "MiniDiffSignAdd"    }, -- added to staging
 	["AA"] = { symbol = "≈",  hlGroup = "MiniDiffSignAdd"    }, -- added in both
+	["AM"] = { symbol = "⊕",  hlGroup = "MiniDiffSignChange" }, -- added in index, modified in worktree
+	["AD"] = { symbol = "✗",  hlGroup = "MiniDiffSignDelete" }, -- added in index, deleted in worktree
 	["D "] = { symbol = "-",  hlGroup = "MiniDiffSignDelete" }, -- deleted from staging
-	["AM"] = { symbol = "⊕",  hlGroup = "MiniDiffSignChange" }, -- added in worktree, modified in index
-	["AD"] = { symbol = "-•", hlGroup = "MiniDiffSignChange" }, -- added in index, deleted in worktree
+	["DD"] = { symbol = "‖",  hlGroup = "MiniDiffSignDelete" }, -- both deleted (unmerged)
 	["R "] = { symbol = "→",  hlGroup = "MiniDiffSignChange" }, -- renamed in index
+	["RM"] = { symbol = "→",  hlGroup = "MiniDiffSignChange" }, -- renamed, then modified
+	["RD"] = { symbol = "✗",  hlGroup = "MiniDiffSignDelete" }, -- renamed, then deleted
+	["C "] = { symbol = "→",  hlGroup = "MiniDiffSignChange" }, -- copied in index
+	["T "] = { symbol = "~",  hlGroup = "MiniDiffSignChange" }, -- typechange in index
 	["U "] = { symbol = "‖",  hlGroup = "MiniDiffSignChange" }, -- unmerged path
 	["UU"] = { symbol = "⇄",  hlGroup = "MiniDiffSignAdd"    }, -- both modified (unmerged)
 	["UA"] = { symbol = "⊕",  hlGroup = "MiniDiffSignAdd"    }, -- added by them (unmerged)
+	["AU"] = { symbol = "⊕",  hlGroup = "MiniDiffSignAdd"    }, -- added by us (unmerged)
+	["UD"] = { symbol = "✗",  hlGroup = "MiniDiffSignDelete" }, -- deleted by them (unmerged)
+	["DU"] = { symbol = "✗",  hlGroup = "MiniDiffSignDelete" }, -- deleted by us (unmerged)
 	["??"] = { symbol = "?",  hlGroup = "MiniDiffSignDelete" }, -- untracked
 	["!!"] = { symbol = "",   hlGroup = "Comment"            }, -- ignored (no sign, dimmed color)
 	-- stylua: ignore end
 }
 
+-- Per-code fallback so an unlisted combination still renders something sane
+-- instead of collapsing to a generic "?" that looks like "untracked".
+---@type table<string, {symbol: string, hlGroup: string}>
+local fallbackMap = {
+	-- stylua: ignore start
+	M = { symbol = "•", hlGroup = "MiniDiffSignChange" },
+	A = { symbol = "+", hlGroup = "MiniDiffSignAdd"    },
+	D = { symbol = "-", hlGroup = "MiniDiffSignDelete" },
+	R = { symbol = "→", hlGroup = "MiniDiffSignChange" },
+	C = { symbol = "→", hlGroup = "MiniDiffSignChange" },
+	T = { symbol = "~", hlGroup = "MiniDiffSignChange" },
+	U = { symbol = "‖", hlGroup = "MiniDiffSignChange" },
+	-- stylua: ignore end
+}
+
+local function lookupSymbol(status)
+	return symbolMap[status]
+		or fallbackMap[status:sub(1, 1)]
+		or fallbackMap[status:sub(2, 2)]
+		or { symbol = "?", hlGroup = "NonText" }
+end
+
 local function mapSymbols(status, is_symlink)
-	local result = symbolMap[status] or { symbol = "?", hlGroup = "NonText" }
-	local symlinkSymbol = is_symlink and "↩" or ""
-	local combined = (symlinkSymbol .. result.symbol):gsub("^%s+", ""):gsub("%s+$", "")
-	local hlGroup = is_symlink and "MiniDiffSignDelete" or result.hlGroup
-	return combined, hlGroup
+	local entry = lookupSymbol(status)
+	if not is_symlink then
+		return entry.symbol, entry.hlGroup
+	end
+	-- `sign_text` is capped at 2 display cells, so the symlink marker only
+	-- prefixes symbols that leave room for it.
+	local symbol = vim.fn.strdisplaywidth(entry.symbol) >= 2 and "↩" or ("↩" .. entry.symbol)
+	return symbol, "MiniDiffSignDelete"
 end
 
 -- Get the directory currently displayed in a mini.files buffer
@@ -72,59 +103,54 @@ local function getCurrentDir(buf_id)
 	return vim.fn.fnamemodify(entry.path, ":h")
 end
 
--- Parse `git status --porcelain .` into { [name] = "XY" }
--- prefix: path of the displayed dir relative to git root (e.g. "src/components")
---         pass "" when viewing the repo root
--- Propagates status up to parent directory entries for nested paths
+-- Precedence when several statuses collapse onto one directory entry:
+-- a real change outranks untracked, which outranks ignored.
+local function rankOf(status)
+	if status == "!!" then return 0 end
+	if status == "??" then return 1 end
+	return 2
+end
+
+-- Parse `git status --porcelain --ignored` into { [name] = "XY" }.
+-- prefix: path of the displayed dir relative to git root (e.g. "src/components"),
+--         "" when viewing the repo root. Needed because git always reports paths
+--         relative to the repo root.
+-- Statuses propagate up to parent directory entries so nested changes are visible.
 local function parseGitStatus(content, prefix)
 	local map = {}
 	local stripPrefix = prefix ~= "" and (prefix .. "/") or ""
 	for line in content:gmatch("[^\r\n]+") do
-		local status, filePath = line:match("^(..)%s+(.*)")
+		local status, filePath = line:match("^(..) (.*)$")
 		if status and filePath then
-			-- git status paths are always relative to the repo root;
-			-- strip the current-dir prefix so keys are relative to the displayed dir
+			-- renames/copies are reported as "old -> new"; key off the destination
+			filePath = filePath:match("^.* %-> (.*)$") or filePath
+			filePath = filePath:gsub("/$", "") -- directories carry a trailing slash
 			if stripPrefix ~= "" then
-				local stripped = filePath:match("^" .. vim.pesc(stripPrefix) .. "(.+)")
-				if not stripped then goto continue end
-				filePath = stripped
+				filePath = filePath:match("^" .. vim.pesc(stripPrefix) .. "(.+)")
 			end
-			local parts = {}
-			for part in filePath:gmatch("[^/]+") do
-				table.insert(parts, part)
-			end
-			local key = ""
-			for i, part in ipairs(parts) do
-				key = i == 1 and part or (key .. "/" .. part)
-				if i == #parts then
-					map[key] = status
-				elseif not map[key] then
-					-- propagate to parent dir so it shows a sign too
-					map[key] = status
+			if filePath and filePath ~= "" then
+				local key = ""
+				for part in filePath:gmatch("[^/]+") do
+					key = key == "" and part or (key .. "/" .. part)
+					local existing = map[key]
+					if existing == nil or rankOf(status) > rankOf(existing) then
+						map[key] = status
+					end
 				end
 			end
-			::continue::
 		end
 	end
 	return map
 end
 
--- Parse `git ls-files --ignored` into { [name] = "!!" }
-local function parseIgnoredFiles(content)
-	local map = {}
-	for line in content:gmatch("[^\r\n]+") do
-		local name = line:gsub("/$", "")  -- strip trailing slash from dirs
-		if name ~= "" then
-			map[name] = "!!"
-		end
-	end
-	return map
-end
-
--- Apply git signs to all entries in a mini.files buffer
-local function applyGitSigns(buf_id, combinedMap)
+-- Apply git signs to all entries in a mini.files buffer.
+-- `dir` guards against a stale async result landing on a buffer that mini.files
+-- has since reused for a different directory.
+local function applyGitSigns(buf_id, dir, map)
 	vim.schedule(function()
 		if not vim.api.nvim_buf_is_valid(buf_id) then return end
+		if getCurrentDir(buf_id) ~= dir then return end
+
 		local nlines = vim.api.nvim_buf_line_count(buf_id)
 		vim.api.nvim_buf_clear_namespace(buf_id, nsMiniFiles, 0, -1)
 
@@ -132,7 +158,7 @@ local function applyGitSigns(buf_id, combinedMap)
 			local entry = MiniFiles.get_fs_entry(buf_id, i)
 			if not entry then break end
 
-			local status = combinedMap[entry.name]
+			local status = map[entry.name]
 			if status then
 				local symbol, hlGroup = mapSymbols(status, isSymlink(entry.path))
 				if symbol ~= "" then
@@ -144,7 +170,7 @@ local function applyGitSigns(buf_id, combinedMap)
 				end
 				-- Highlight the filename text as well
 				local line = vim.api.nvim_buf_get_lines(buf_id, i - 1, i, false)[1]
-				local nameCol = line:find(vim.pesc(entry.name)) or 0
+				local nameCol = line and line:find(entry.name, 1, true) or 0
 				if nameCol > 0 then
 					vim.api.nvim_buf_set_extmark(buf_id, nsMiniFiles, i - 1, nameCol - 1, {
 						end_col = nameCol + #entry.name - 1,
@@ -156,59 +182,47 @@ local function applyGitSigns(buf_id, combinedMap)
 	end)
 end
 
--- Load git status for the directory shown in buf_id.
--- Two async queries run independently:
---   1. git status --porcelain .      (fast, ~50-100ms) — shown first
---   2. git ls-files --ignored ...    (dedicated cmd, ~100-300ms) — merged after
--- Results are cached separately; ignored files use a longer TTL.
+-- Drop cache entries nobody is going to reuse, so a long session browsing many
+-- directories does not grow the table without bound.
+local function pruneCache(now)
+	for dir, entry in pairs(cache) do
+		if now - entry.time >= CACHE_TTL then cache[dir] = nil end
+	end
+end
+
+-- Load git status for the directory shown in buf_id. A single `git status` call
+-- covers changes and ignored entries; `--ignored=traditional` collapses ignored
+-- directories so large ones (node_modules) stay cheap. `core.quotePath=false`
+-- keeps paths with spaces or non-ASCII characters readable instead of escaped.
 local function updateGitStatus(buf_id)
 	local dir = getCurrentDir(buf_id)
-	if not dir or not vim.fs.root(dir, ".git") then return end
-
-	-- Prefix = dir relative to git root (e.g. "src/components"); "" at repo root.
-	-- Needed because `git status` always outputs paths relative to the repo root.
-	local gitRoot = vim.fs.root(dir, ".git") or ""
-	local prefix = gitRoot ~= "" and dir:sub(#gitRoot + 2) or ""
-
-	-- Merge both caches and redraw signs
-	local function redraw()
-		local sMap = cache.status[dir]  and cache.status[dir].map  or {}
-		local iMap = cache.ignored[dir] and cache.ignored[dir].map or {}
-		-- status entries take priority over ignored markers on conflict
-		applyGitSigns(buf_id, vim.tbl_extend("keep", sMap, iMap))
-	end
+	if not dir then return end
+	local gitRoot = vim.fs.root(dir, ".git")
+	if not gitRoot then return end
 
 	local now = os.time()
-
-	-- Query 1: fast status (modified/added/deleted/untracked)
-	if cache.status[dir] and (now - cache.status[dir].time < STATUS_TTL) then
-		redraw()
-	else
-		vim.system(
-			{ "git", "status", "--porcelain", "." },
-			{ text = true, cwd = dir },
-			function(result)
-				if result.code == 0 then
-					cache.status[dir] = { time = os.time(), map = parseGitStatus(result.stdout, prefix) }
-					redraw()
-				end
-			end
-		)
+	local cached = cache[dir]
+	if cached and (now - cached.time < CACHE_TTL) then
+		applyGitSigns(buf_id, dir, cached.map)
+		return
 	end
+	pruneCache(now)
 
-	-- Query 2: ignored files (runs in parallel, merges when done)
-	if not (cache.ignored[dir] and (now - cache.ignored[dir].time < IGNORED_TTL)) then
-		vim.system(
-			{ "git", "ls-files", "--ignored", "--exclude-standard", "--others", "--directory", "." },
-			{ text = true, cwd = dir },
-			function(result)
-				if result.code == 0 then
-					cache.ignored[dir] = { time = os.time(), map = parseIgnoredFiles(result.stdout) }
-					redraw()
-				end
-			end
-		)
-	end
+	local prefix = dir:sub(#gitRoot + 2)
+	vim.system({
+		"git",
+		"-c",
+		"core.quotePath=false",
+		"status",
+		"--porcelain",
+		"--ignored=traditional",
+		".",
+	}, { text = true, cwd = dir }, function(result)
+		if result.code ~= 0 then return end
+		local map = parseGitStatus(result.stdout, prefix)
+		cache[dir] = { time = os.time(), map = map }
+		applyGitSigns(buf_id, dir, map)
+	end)
 end
 
 local function augroup(name)
@@ -220,11 +234,11 @@ autocmd("User", {
 	group = augroup("buf_keymaps"),
 	pattern = "MiniFilesBufferCreate",
 	callback = function(args)
-		vim.keymap.set("n", "q", MiniFiles.close, { buffer = args.data.buf_id })
+		vim.keymap.set("n", "<C-c>", MiniFiles.close, { buffer = args.data.buf_id })
 	end,
 })
 
--- Load signs when explorer opens
+-- Load signs when the explorer opens
 autocmd("User", {
 	group = augroup("start"),
 	pattern = "MiniFilesExplorerOpen",
@@ -233,7 +247,7 @@ autocmd("User", {
 	end,
 })
 
--- Load signs when navigating into a new directory (new buffer created per dir)
+-- Load signs when navigating into a new directory (buffers are reused per path)
 autocmd("User", {
 	group = augroup("update"),
 	pattern = "MiniFilesBufferUpdate",
@@ -242,5 +256,25 @@ autocmd("User", {
 	end,
 })
 
--- Cache is intentionally NOT cleared on close — TTL handles expiry.
--- This makes reopening the explorer near-instant on repeat opens.
+-- Anything that can change git status invalidates the cache immediately,
+-- otherwise the TTL would keep serving pre-action results.
+autocmd("User", {
+	group = augroup("invalidate"),
+	pattern = {
+		"MiniFilesActionCreate",
+		"MiniFilesActionDelete",
+		"MiniFilesActionRename",
+		"MiniFilesActionCopy",
+		"MiniFilesActionMove",
+	},
+	callback = function()
+		cache = {}
+	end,
+})
+
+autocmd("BufWritePost", {
+	group = augroup("invalidate_write"),
+	callback = function()
+		cache = {}
+	end,
+})
