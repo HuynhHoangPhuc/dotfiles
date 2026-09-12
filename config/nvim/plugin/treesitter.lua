@@ -1,45 +1,39 @@
-local ensure_installed = {}
+require("packages.lazy").add({
+	src = "https://github.com/nvim-treesitter/nvim-treesitter",
+	config = function()
+		local ensure_installed = {
+			"lua",
+			"c",
+			"cpp",
+			"html",
+			"css",
+			"javascript",
+			"typescript",
+			"tsx",
+			"markdown",
+			"markdown_inline",
+			"zig",
+			"rust",
+			"ron",
+		}
 
-if not os.getenv("DOTFILES_WITH_FLAKE") then
-	ensure_installed = {
-		"lua",
-		"c",
-		"cpp",
-		"html",
-		"css",
-		"javascript",
-		"typescript",
-		"tsx",
-		"markdown",
-		"markdown_inline",
-		"zig",
-		"rust",
-		"ron",
-	}
-end
+		local treesitter = require("nvim-treesitter")
 
-local ok, treesitter = pcall(require, "nvim-treesitter")
-
-if not ok then
-	vim.schedule(function()
-		vim.notify("nvim-treesitter is unavailable", vim.log.levels.WARN)
-	end)
-	return
-end
-
-if #ensure_installed > 0 then
-	-- Without the "parsers" argument this also reports languages that only have
-	-- queries installed, which hides parsers that never compiled.
-	local installed = treesitter.get_installed("parsers")
-
-	local missing = vim.iter(ensure_installed)
-		:filter(function(lang)
-			return not vim.tbl_contains(installed, lang)
-		end)
-		:totable()
-
-	if #missing > 0 then
+		-- Listing installed parsers hits disk and installing them is slow, so
+		-- neither belongs in front of the first redraw.
 		vim.schedule(function()
+			-- Without the "parsers" argument this also reports languages that only have
+			-- queries installed, which hides parsers that never compiled.
+			local installed = treesitter.get_installed("parsers")
+
+			local missing = vim.iter(ensure_installed)
+				:filter(function(lang)
+					return not vim.tbl_contains(installed, lang)
+				end)
+				:totable()
+
+			if #missing == 0 then return end
+
 			local spawn_ok, task = pcall(treesitter.install, missing)
 
 			if not spawn_ok then
@@ -65,25 +59,25 @@ if #ensure_installed > 0 then
 				end
 			end)
 		end)
-	end
-end
 
-local uv = vim.uv or vim.loop
+		local uv = vim.uv or vim.loop
 
-local function is_large_file(buf)
-	local max_filesize = 100 * 1024 -- 100 KB
-	local ok_stat, stats = pcall(uv.fs_stat, vim.api.nvim_buf_get_name(buf))
+		local function is_large_file(buf)
+			local max_filesize = 100 * 1024 -- 100 KB
+			local ok_stat, stats = pcall(uv.fs_stat, vim.api.nvim_buf_get_name(buf))
 
-	return ok_stat and stats and stats.size > max_filesize
-end
+			return ok_stat and stats and stats.size > max_filesize
+		end
 
-local group = vim.api.nvim_create_augroup("dotfiles-treesitter", { clear = true })
+		local group = vim.api.nvim_create_augroup("dotfiles-treesitter", { clear = true })
 
-vim.api.nvim_create_autocmd("FileType", {
-	group = group,
-	callback = function(args)
-		if is_large_file(args.buf) then return end
+		vim.api.nvim_create_autocmd("FileType", {
+			group = group,
+			callback = function(args)
+				if is_large_file(args.buf) then return end
 
-		pcall(vim.treesitter.start, args.buf)
+				pcall(vim.treesitter.start, args.buf)
+			end,
+		})
 	end,
 })

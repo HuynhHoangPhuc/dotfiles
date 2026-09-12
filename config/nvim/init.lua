@@ -2,10 +2,8 @@ vim.loader.enable()
 require("options")
 require("keymaps")
 
-if not os.getenv("DOTFILES_WITH_FLAKE") then
-	require("plugins")
-	require("packages").setup()
-end
+-- Plugins register themselves from plugin/*.lua via lua/lazy.lua.
+require("packages").setup()
 
 if vim.fn.has("win32") == 1 then
 	-- Detects if the current shell is bash

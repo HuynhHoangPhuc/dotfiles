@@ -113,34 +113,47 @@ M.lsp = {
 	},
 	setup = {
 		clangd = function()
-			require("clangd_extensions").setup({
-				inlay_hints = {
-					inline = false,
-				},
-				ast = {
-					role_icons = {
-						type = "",
-						declaration = "",
-						expression = "",
-						specifier = "",
-						statement = "",
-						["template argument"] = "",
+			-- Deferred to the first c/cpp buffer. This runs for every server the
+			-- moment nvim-lspconfig loads, which is well before clangd_extensions
+			-- has been filetype-loaded (see plugin/clangd.lua).
+			local did_setup = false
+
+			local function setup_extensions()
+				if did_setup then return end
+				did_setup = true
+
+				require("packages.lazy").load("clangd_extensions.nvim")
+				require("clangd_extensions").setup({
+					inlay_hints = {
+						inline = false,
 					},
-					kind_icons = {
-						Compound = "",
-						Recovery = "",
-						TranslationUnit = "",
-						PackExpansion = "",
-						TemplateTypeParm = "",
-						TemplateTemplateParm = "",
-						TemplateParamObject = "",
+					ast = {
+						role_icons = {
+							type = "",
+							declaration = "",
+							expression = "",
+							specifier = "",
+							statement = "",
+							["template argument"] = "",
+						},
+						kind_icons = {
+							Compound = "",
+							Recovery = "",
+							TranslationUnit = "",
+							PackExpansion = "",
+							TemplateTypeParm = "",
+							TemplateTemplateParm = "",
+							TemplateParamObject = "",
+						},
 					},
-				},
-			})
+				})
+			end
 
 			vim.api.nvim_create_autocmd("FileType", {
 				pattern = { "c", "cpp" },
 				callback = function(args)
+					setup_extensions()
+
 					vim.keymap.set(
 						"n",
 						"<F10>",

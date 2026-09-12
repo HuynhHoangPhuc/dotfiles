@@ -19,7 +19,6 @@ in
     LC_CTYPE = "en_US.UTF-8";
     PROJECTS = "${homeDirectory}/Developer";
     EDITOR = "nvim";
-    DOTFILES_WITH_FLAKE = "1";
   };
 
   home.activation.developer = ''

@@ -84,7 +84,9 @@ M.setup = function()
 		{ desc = "Install missing and update outdated Mason packages" }
 	)
 
-	M.install_missing()
+	-- Walking the registry is the expensive half of this, and nothing on screen
+	-- depends on the result. mason.setup() itself stays eager, in plugin/mason.lua.
+	vim.schedule(M.install_missing)
 end
 
 return M
