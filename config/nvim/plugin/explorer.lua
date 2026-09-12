@@ -10,9 +10,7 @@ MiniFiles.setup({
 })
 
 vim.keymap.set("n", "<leader>e", function()
-	if not MiniFiles.close() then
-		MiniFiles.open(vim.api.nvim_buf_get_name(0), true)
-	end
+	if not MiniFiles.close() then MiniFiles.open(vim.api.nvim_buf_get_name(0), true) end
 end)
 vim.keymap.set("n", "<leader>E", function()
 	MiniFiles.open(vim.uv.cwd(), true)
@@ -22,10 +20,23 @@ local nsMiniFiles = vim.api.nvim_create_namespace("mini_files_git")
 local autocmd = vim.api.nvim_create_autocmd
 local uv = vim.uv or vim.loop
 
--- [dir] = { time, map }. Never cleared on close so reopening is instant;
--- expiry is by TTL, plus explicit invalidation after file actions/writes.
+-- [gitRoot] = { time, map }. Keyed by repository, not by directory: one
+-- `git status` covers every level mini.files can show, so every open window
+-- (root -> ... -> leaf) is painted from the same snapshot. Never cleared on
+-- close so reopening is instant; expiry is by TTL, plus explicit invalidation
+-- after file actions/writes.
 local cache = {}
+local pending = {} -- [gitRoot] = list of callbacks waiting on an in-flight call
+local generation = 0 -- bumped on invalidation, so a call started before it cannot write back
 local CACHE_TTL = 10 -- seconds
+
+-- Every mini.files buffer currently alive, so invalidation can repaint all of
+-- them instead of only the focused one.
+local trackedBufs = {}
+
+local function normalize(path)
+	return (vim.fs.normalize(path):gsub("/+$", ""))
+end
 
 local function isSymlink(path)
 	local stat = uv.fs_lstat(path)
@@ -87,20 +98,25 @@ end
 
 local function mapSymbols(status, is_symlink)
 	local entry = lookupSymbol(status)
-	if not is_symlink then
-		return entry.symbol, entry.hlGroup
-	end
+	if not is_symlink then return entry.symbol, entry.hlGroup end
 	-- `sign_text` is capped at 2 display cells, so the symlink marker only
 	-- prefixes symbols that leave room for it.
 	local symbol = vim.fn.strdisplaywidth(entry.symbol) >= 2 and "↩" or ("↩" .. entry.symbol)
 	return symbol, "MiniDiffSignDelete"
 end
 
--- Get the directory currently displayed in a mini.files buffer
-local function getCurrentDir(buf_id)
+-- Directory a mini.files buffer is showing. `get_fs_entry` is the cheap path,
+-- but it returns nil for an empty directory, so fall back to the buffer name
+-- (mini.files names buffers `minifiles://<id>/<path>`).
+local function getBufDir(buf_id)
 	local entry = MiniFiles.get_fs_entry(buf_id, 1)
-	if not entry then return nil end
-	return vim.fn.fnamemodify(entry.path, ":h")
+	if entry then return normalize(vim.fs.dirname(entry.path)) end
+	local path = vim.api.nvim_buf_get_name(buf_id):match("^minifiles://%d+/(.*)$")
+	return path and path ~= "" and normalize(path) or nil
+end
+
+local function parentOf(path)
+	return path:match("^(.*)/[^/]+$")
 end
 
 -- Precedence when several statuses collapse onto one directory entry:
@@ -111,31 +127,31 @@ local function rankOf(status)
 	return 2
 end
 
--- Parse `git status --porcelain --ignored` into { [name] = "XY" }.
--- prefix: path of the displayed dir relative to git root (e.g. "src/components"),
---         "" when viewing the repo root. Needed because git always reports paths
---         relative to the repo root.
--- Statuses propagate up to parent directory entries so nested changes are visible.
-local function parseGitStatus(content, prefix)
+local function setStatus(map, path, status)
+	local existing = map[path]
+	if existing == nil or rankOf(status) > rankOf(existing) then map[path] = status end
+end
+
+-- Parse `git status --porcelain --ignored` into { [absolutePath] = "XY" }.
+-- Git reports paths relative to the repo root, so absolute keys make lookups
+-- independent of which directory a given window happens to show. Each status is
+-- propagated to *every* ancestor directory up to the repo root, which is what
+-- makes the whole chain of mini.files windows light up for one nested change.
+local function parseGitStatus(content, root)
 	local map = {}
-	local stripPrefix = prefix ~= "" and (prefix .. "/") or ""
 	for line in content:gmatch("[^\r\n]+") do
 		local status, filePath = line:match("^(..) (.*)$")
 		if status and filePath then
 			-- renames/copies are reported as "old -> new"; key off the destination
 			filePath = filePath:match("^.* %-> (.*)$") or filePath
-			filePath = filePath:gsub("/$", "") -- directories carry a trailing slash
-			if stripPrefix ~= "" then
-				filePath = filePath:match("^" .. vim.pesc(stripPrefix) .. "(.+)")
-			end
-			if filePath and filePath ~= "" then
-				local key = ""
-				for part in filePath:gmatch("[^/]+") do
-					key = key == "" and part or (key .. "/" .. part)
-					local existing = map[key]
-					if existing == nil or rankOf(status) > rankOf(existing) then
-						map[key] = status
-					end
+			filePath = filePath:gsub("/+$", "") -- directories carry a trailing slash
+			if filePath ~= "" then
+				local path = root .. "/" .. filePath
+				setStatus(map, path, status)
+				local parent = parentOf(path)
+				while parent and #parent > #root do
+					setStatus(map, parent, status)
+					parent = parentOf(parent)
 				end
 			end
 		end
@@ -143,22 +159,38 @@ local function parseGitStatus(content, prefix)
 	return map
 end
 
--- Apply git signs to all entries in a mini.files buffer.
--- `dir` guards against a stale async result landing on a buffer that mini.files
--- has since reused for a different directory.
-local function applyGitSigns(buf_id, dir, map)
+-- Git collapses untracked and ignored *directories* into a single entry, so
+-- their contents never appear in the output. Inherit those two statuses
+-- downwards; any other ancestor status means the ancestor is merely a parent of
+-- some other change and says nothing about this entry.
+local function statusFor(map, path, root)
+	local status = map[path]
+	if status then return status end
+	local parent = parentOf(path)
+	while parent and #parent >= #root do
+		local parentStatus = map[parent]
+		if parentStatus == "??" or parentStatus == "!!" then return parentStatus end
+		if parentStatus then return nil end
+		parent = parentOf(parent)
+	end
+	return nil
+end
+
+-- Apply git signs to all entries in a mini.files buffer. Lookups are keyed by
+-- absolute path, so a result arriving late cannot paint the wrong directory
+-- even if mini.files reused the buffer in the meantime.
+local function applyGitSigns(buf_id, root, map)
 	vim.schedule(function()
 		if not vim.api.nvim_buf_is_valid(buf_id) then return end
-		if getCurrentDir(buf_id) ~= dir then return end
 
-		local nlines = vim.api.nvim_buf_line_count(buf_id)
+		local lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
 		vim.api.nvim_buf_clear_namespace(buf_id, nsMiniFiles, 0, -1)
 
-		for i = 1, nlines do
+		for i, line in ipairs(lines) do
 			local entry = MiniFiles.get_fs_entry(buf_id, i)
 			if not entry then break end
 
-			local status = map[entry.name]
+			local status = statusFor(map, normalize(entry.path), root)
 			if status then
 				local symbol, hlGroup = mapSymbols(status, isSymlink(entry.path))
 				if symbol ~= "" then
@@ -169,8 +201,7 @@ local function applyGitSigns(buf_id, dir, map)
 					})
 				end
 				-- Highlight the filename text as well
-				local line = vim.api.nvim_buf_get_lines(buf_id, i - 1, i, false)[1]
-				local nameCol = line and line:find(entry.name, 1, true) or 0
+				local nameCol = line:find(entry.name, 1, true) or 0
 				if nameCol > 0 then
 					vim.api.nvim_buf_set_extmark(buf_id, nsMiniFiles, i - 1, nameCol - 1, {
 						end_col = nameCol + #entry.name - 1,
@@ -183,32 +214,34 @@ local function applyGitSigns(buf_id, dir, map)
 end
 
 -- Drop cache entries nobody is going to reuse, so a long session browsing many
--- directories does not grow the table without bound.
+-- repositories does not grow the table without bound.
 local function pruneCache(now)
-	for dir, entry in pairs(cache) do
-		if now - entry.time >= CACHE_TTL then cache[dir] = nil end
+	for root, entry in pairs(cache) do
+		if now - entry.time >= CACHE_TTL then cache[root] = nil end
 	end
 end
 
--- Load git status for the directory shown in buf_id. A single `git status` call
--- covers changes and ignored entries; `--ignored=traditional` collapses ignored
--- directories so large ones (node_modules) stay cheap. `core.quotePath=false`
--- keeps paths with spaces or non-ASCII characters readable instead of escaped.
-local function updateGitStatus(buf_id)
-	local dir = getCurrentDir(buf_id)
-	if not dir then return end
-	local gitRoot = vim.fs.root(dir, ".git")
-	if not gitRoot then return end
-
+-- Fetch (or reuse) the status snapshot for a repository. `--ignored=traditional`
+-- collapses ignored directories so large ones (node_modules) stay cheap, and
+-- `core.quotePath=false` keeps paths with spaces or non-ASCII characters
+-- readable instead of escaped. Concurrent requests for the same repo — which is
+-- the normal case, one per open window — share a single git invocation.
+local function fetchStatus(root, callback)
 	local now = os.time()
-	local cached = cache[dir]
+	local cached = cache[root]
 	if cached and (now - cached.time < CACHE_TTL) then
-		applyGitSigns(buf_id, dir, cached.map)
+		callback(cached.map)
 		return
 	end
-	pruneCache(now)
 
-	local prefix = dir:sub(#gitRoot + 2)
+	local waiters = pending[root]
+	if waiters then
+		waiters[#waiters + 1] = callback
+		return
+	end
+	pending[root] = { callback }
+	local startedAt = generation
+
 	vim.system({
 		"git",
 		"-c",
@@ -216,13 +249,56 @@ local function updateGitStatus(buf_id)
 		"status",
 		"--porcelain",
 		"--ignored=traditional",
-		".",
-	}, { text = true, cwd = dir }, function(result)
+	}, { text = true, cwd = root }, function(result)
+		local callbacks = pending[root] or {}
+		pending[root] = nil
 		if result.code ~= 0 then return end
-		local map = parseGitStatus(result.stdout, prefix)
-		cache[dir] = { time = os.time(), map = map }
-		applyGitSigns(buf_id, dir, map)
+		-- An invalidation landed while git was running: this snapshot predates
+		-- the change, so drop it and let the pending refresh produce a fresh one.
+		if startedAt ~= generation then return end
+
+		local map = parseGitStatus(result.stdout or "", root)
+		pruneCache(os.time())
+		cache[root] = { time = os.time(), map = map }
+		for _, cb in ipairs(callbacks) do
+			cb(map)
+		end
 	end)
+end
+
+local function updateGitStatus(buf_id)
+	local dir = getBufDir(buf_id)
+	if not dir then return end
+	local root = vim.fs.root(dir, ".git")
+	if not root then return end
+	root = normalize(root)
+
+	fetchStatus(root, function(map)
+		applyGitSigns(buf_id, root, map)
+	end)
+end
+
+-- Repaint every live mini.files buffer, not just the focused one: a single
+-- change deep in the tree must light up each ancestor window as well.
+local function refreshAll()
+	for buf_id in pairs(trackedBufs) do
+		if vim.api.nvim_buf_is_valid(buf_id) then
+			updateGitStatus(buf_id)
+		else
+			trackedBufs[buf_id] = nil
+		end
+	end
+end
+
+-- Invalidation events arrive in bursts (a rename fires several, `:wall` fires
+-- one per buffer); coalesce them into a single git call.
+local refreshTimer = uv.new_timer()
+local function invalidate()
+	generation = generation + 1
+	cache = {}
+	pending = {}
+	refreshTimer:stop()
+	refreshTimer:start(50, 0, vim.schedule_wrap(refreshAll))
 end
 
 local function augroup(name)
@@ -234,6 +310,7 @@ autocmd("User", {
 	group = augroup("buf_keymaps"),
 	pattern = "MiniFilesBufferCreate",
 	callback = function(args)
+		trackedBufs[args.data.buf_id] = true
 		vim.keymap.set("n", "<C-c>", MiniFiles.close, { buffer = args.data.buf_id })
 	end,
 })
@@ -242,9 +319,7 @@ autocmd("User", {
 autocmd("User", {
 	group = augroup("start"),
 	pattern = "MiniFilesExplorerOpen",
-	callback = function()
-		updateGitStatus(vim.api.nvim_get_current_buf())
-	end,
+	callback = refreshAll,
 })
 
 -- Load signs when navigating into a new directory (buffers are reused per path)
@@ -252,6 +327,7 @@ autocmd("User", {
 	group = augroup("update"),
 	pattern = "MiniFilesBufferUpdate",
 	callback = function(args)
+		trackedBufs[args.data.buf_id] = true
 		updateGitStatus(args.data.buf_id)
 	end,
 })
@@ -267,14 +343,18 @@ autocmd("User", {
 		"MiniFilesActionCopy",
 		"MiniFilesActionMove",
 	},
-	callback = function()
-		cache = {}
-	end,
+	callback = invalidate,
 })
 
 autocmd("BufWritePost", {
 	group = augroup("invalidate_write"),
+	callback = invalidate,
+})
+
+autocmd("User", {
+	group = augroup("stop"),
+	pattern = "MiniFilesExplorerClose",
 	callback = function()
-		cache = {}
+		trackedBufs = {}
 	end,
 })
