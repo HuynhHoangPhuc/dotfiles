@@ -4,7 +4,7 @@ require("keymaps")
 
 if not os.getenv("DOTFILES_WITH_FLAKE") then
 	require("plugins")
-	require("packages").install_all()
+	require("packages").setup()
 end
 
 if vim.fn.has("win32") == 1 then

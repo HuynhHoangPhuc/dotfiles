@@ -43,21 +43,48 @@ M.get_pkgs = function()
 	return pkgs
 end
 
-M.install_all = function()
+-- get_package throws for a name the local registry does not know about, which
+-- happens before the registry has been downloaded for the first time.
+local function each_pkg(fn)
 	local mr = require("mason-registry")
 
-	mr.refresh(function()
-		for _, tool in ipairs(M.get_pkgs()) do
-			local p = mr.get_package(tool)
+	for _, tool in ipairs(M.get_pkgs()) do
+		local ok, p = pcall(mr.get_package, tool)
+		if ok then fn(p) end
+	end
+end
 
+-- Startup path: install what is missing, using the registry already on disk.
+-- No refresh and no version check, so this costs nothing once everything is in.
+M.install_missing = function()
+	each_pkg(function(p)
+		if not p:is_installed() then p:install() end
+	end)
+end
+
+-- :MasonUpdateAll - refresh the registry, then install missing packages and
+-- upgrade the ones that are behind.
+M.update_all = function()
+	require("mason-registry").refresh(function()
+		each_pkg(function(p)
 			if not p:is_installed() then
 				p:install()
 			else
 				local ok, latest = pcall(p.get_latest_version, p)
 				if ok and latest and p:get_installed_version() ~= latest then p:install() end
 			end
-		end
+		end)
 	end)
+end
+
+M.setup = function()
+	vim.api.nvim_create_user_command(
+		"MasonUpdateAll",
+		M.update_all,
+		{ desc = "Install missing and update outdated Mason packages" }
+	)
+
+	M.install_missing()
 end
 
 return M
