@@ -45,8 +45,10 @@ end
 
 -- get_package throws for a name the local registry does not know about, which
 -- happens before the registry has been downloaded for the first time.
+-- Mason itself may not be on disk yet either (first start, or a failed clone).
 local function each_pkg(fn)
-	local mr = require("mason-registry")
+	local has_mr, mr = pcall(require, "mason-registry")
+	if not has_mr then return end
 
 	for _, tool in ipairs(M.get_pkgs()) do
 		local ok, p = pcall(mr.get_package, tool)
@@ -83,10 +85,6 @@ M.setup = function()
 		M.update_all,
 		{ desc = "Install missing and update outdated Mason packages" }
 	)
-
-	-- Walking the registry is the expensive half of this, and nothing on screen
-	-- depends on the result. mason.setup() itself stays eager, in plugin/mason.lua.
-	vim.schedule(M.install_missing)
 end
 
 return M
